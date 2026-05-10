@@ -72,7 +72,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Federated reactions on alliance reads** — [federation.md](federation.md)
 
 ### Notifications & UI
-- **Three-state notifications (all / mentions / silent)** — [data-model.md](data-model.md), [client.md](client.md)
+- **Three-state notifications (all / mentions / silent)** — [data-model.md](data-model.md), [client.md](client.md), [decisions.md](decisions.md)
 - **System tray + OS notifications + sound** — [client.md](client.md)
 - **Window title unread count** — [client.md](client.md)
 - **Themes (Calm / Classic / Linear / Light)** — [client.md](client.md)

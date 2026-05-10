@@ -10,12 +10,64 @@ Tauri 2 + React 19 + TypeScript. Two halves:
 ## React entry
 
 - `src/main.tsx` — boots React
-- `src/App.tsx` — single-component app holding most state. Yes, it's
-  large; the project is small enough that one file with hooks + context
-  is simpler than a premature feature split.
+- `src/App.tsx` — state container. Holds all hooks, effects, and
+  handlers; renders only by composing top-level components.
+- `src/components/` — all visual components.
 
-State held in `App.tsx` includes: identity, hub list, active hub, channel
-list, messages, DMs, blocked users, notifications, theme, and UI mode.
+**State in `App.tsx`**: identity, hub list, active hub, channel list,
+messages, DMs, alliances, blocked users, notifications, theme, voice
+state, and all UI transient state (modal open flags, form drafts,
+context menu positions).
+
+### Component tree (top-down)
+
+`App.tsx` renders one of three full-page views:
+
+| Condition | Component |
+|---|---|
+| `showHubAdmin` | `HubAdminPage` |
+| `showSettings` | `SettingsPage` |
+| otherwise | main layout (below) |
+
+The main layout is:
+
+```
+HubSidebar          — leftmost icon bar: hub list + DM button
+ChannelSidebar      — channel/DM list, alliances, games, voice footer
+ContentArea         — chat area, game iframe, member sidebar
+```
+
+Overlays rendered unconditionally when their state is set:
+`AddHubModal`, `CreateChannelModal`, `InstallGameModal`, `EditGameModal`,
+`FriendsModal`, `ChannelContextMenu`, `UserContextMenu`,
+`EditDescriptionModal`, `ChannelBansModal`, `ChannelPalette`, `Lightbox`.
+
+### Component categories
+
+**Page-level** (own the full viewport):
+`HubAdminPage`, `SettingsPage`
+
+**Layout panels** (receive all state as props, no internal state except
+DnD sensors):
+`HubSidebar`, `ChannelSidebar`, `ContentArea`
+
+**Modals and overlays** (opened by App.tsx, closed via `onClose` prop):
+`AddHubModal`, `CreateChannelModal`, `InstallGameModal`, `EditGameModal`,
+`FriendsModal`, `EditDescriptionModal`, `ChannelBansModal`,
+`ChannelContextMenu`, `UserContextMenu`, `ChannelPalette`, `Lightbox`
+
+**Primitives** (self-contained, used by multiple parents):
+`Avatar`, `TypingIndicator`, `MessageContent`, `MessageReactions`,
+`ReactionPicker`, `Attachments`, `UserListGrouped`, `MicLevelMeter`,
+`SortableItems`, `Icons`, `ThemePicker`, `PttKeyBinder`,
+`ImagePicker`, `AvatarEditor`, `WelcomeRecoveryBlock`
+
+**Admin sub-components** (used inside `HubAdminPage`):
+`MemberRow`, `RoleEditor`, `RoleCreator`, `InvitesSection`,
+`AlliancesSection`, `ChannelBansModal`
+
+**Settings sub-components** (used inside `SettingsPage`):
+`ProfileTab`, `RestoreIdentitySection`, `MicLevelMeter`
 
 ## Persistence (per-device)
 
@@ -76,11 +128,71 @@ State lives in two refs: `reconnectTimers` (per-hub setTimeout IDs) and
 `reconnectAttempts` (per-hub backoff counters). Both clear on success
 or when the user leaves the hub.
 
+## State organisation
+
+**Single flat state container.** All ~172 `useState`/`useRef`/`useEffect`
+hooks, all effects, and all event handlers live in `App.tsx`. Components
+are pure renderers; they receive values and callbacks as props and hold
+no application state of their own (only local UI concerns: DnD sensors,
+input focus).
+
+**No per-domain custom hooks. No application-state context.** This was
+considered and rejected — see [decisions.md](decisions.md). The short
+version: handlers and effects are heavily cross-domain (a single hub
+switch touches eight "domains"; the hub-WS event handler writes into
+nine of them), so a domain split would either leak its dependencies
+through its public surface or force the coordinating handlers back up
+into App.tsx anyway. Context would also weaken TypeScript inference
+and make the two consumer components untestable without a provider.
+
+**Logical groupings inside App.tsx** (these are reading-order labels,
+not modules):
+
+| Group | Owns |
+|---|---|
+| Identity | `publicKey`, `recoveryPhrase`, `profiles`, `defaultProfileId` |
+| Hubs | `hubs`, `activeHubId`, `hubConnected`, `reconnectingHubs`, `pingByHub`, `hubNotifyMode`, reconnect refs |
+| Channels | `channels`, `selectedChannel`, `pinnedChannels`, `collapsedCategories`, `unreadByChannel`, `channelNotifyMode`, `voicePartByChannel`, `voiceActiveUsers` |
+| Messages | `messages`, `editingMessageId`, `editingDraft`, `replyTarget`, `pendingAttachments`, `inputText`, `searchQuery`, `searchResults`, `searchOpen`, `stickToBottom` |
+| Typing | `typingByKey`, `dmTypingByKey` and their debounce refs |
+| DMs | `view`, `conversations`, `selectedConversation`, `dmMessages`, `unreadDms` |
+| Alliances | `userAlliances`, `allianceChannels`, `selectedAllianceChannel`, `allianceMessages` |
+| Voice | `voiceChannelId`, `selfMuted`, `selfDeafened`, audio devices, `vadThreshold`, `voiceMode`, `pttKey`, `micLevel`, `micTesting` |
+| Friends | `friends`, `pendingFriends`, friend-request form drafts |
+| Games | `installedGames`, `selectedGame`, install/edit form drafts |
+| Settings | `theme`, `mentionPingEnabled`, `blockedUsers`, settings tab |
+| Hub admin | `myRoles`, `myApprovalStatus`, `adminMembers`, `adminBans`, `adminVoiceMutes`, `adminInvites`, `adminRoles`, `pendingMembers`, `requireApproval`, hub-edit drafts |
+| UI flags | modal open flags, context menu positions, lightbox, toast, error, palette open, member sidebar hidden |
+
+**Convention for additions**: when adding state, place it next to the
+existing group that owns the same data. Effects go below their state
+group. Handlers that span groups go below all the state they touch.
+
+**What is allowed to leave App.tsx**:
+- Pure helpers (URL builders, formatters, sort comparators) → `src/utils/`.
+- Small, single-purpose custom hooks for *mechanism* not *domain* —
+  e.g., a debounce helper, a reconnect-backoff helper. These are fine
+  if they take their dependencies as arguments and return primitives.
+
+**What is not allowed**:
+- Domain hooks (`useHubs`, `useMessaging`, `useVoice`, ...).
+- Context providers for application state.
+- Components owning state that should be in App.tsx (drafts, selections,
+  toggles that other components also need to see).
+
 ## Conventions
 
-- **One `App.tsx` until pain demands a split.** Adding a folder hierarchy
-  before there's friction is overhead with no benefit.
-- **No state library**. React state + context covers everything.
+- **`App.tsx` owns state; components own rendering.** All hooks, effects,
+  and event handlers live in `App.tsx`. Components receive what they need
+  as props and call handlers via callbacks — no internal state except
+  local UI concerns (DnD sensors, input focus).
+- **Props-only data flow.** The fat prop interfaces on `ContentArea`
+  (~50 props) and `ChannelSidebar` (~30 props) are deliberate — they
+  are direct children of `App.tsx`, so the "drilling" is one level
+  deep, and the explicit interface keeps the components testable and
+  type-checked. See [decisions.md](decisions.md).
+- **No state library**. React state covers everything. Context is not
+  used for application state either (see "State organisation" above).
 - **No router**. Internal "pages" are just conditionally rendered panels.
 - **Client never trusts the hub for permissions** — it shows or hides UI
   based on what the hub returns; the hub re-checks every action.
