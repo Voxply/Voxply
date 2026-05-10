@@ -3088,6 +3088,70 @@ async fn update_hub_branding(
     Ok(())
 }
 
+/// Sign a directory listing with the hub's private key and submit it to the
+/// Voxply discovery directory. The hub must be the active session.
+#[tauri::command]
+async fn submit_to_directory(
+    directory_url: String,
+    tags: Vec<String>,
+    language: String,
+    bio: String,
+    invite_code: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = reqwest::Client::new();
+
+    // Step 1: ask the hub to sign the canonical payload
+    let sign_resp = client
+        .post(format!("{hub_url}/admin/directory-sign"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({
+            "hub_url": hub_url,
+            "tags": tags,
+            "language": language,
+            "bio": bio,
+            "invite_code": invite_code,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Sign request failed: {e}"))?;
+
+    if !sign_resp.status().is_success() {
+        return Err(format!("Hub refused to sign: {}", sign_resp.text().await.unwrap_or_default()));
+    }
+
+    let signed: serde_json::Value = sign_resp.json().await
+        .map_err(|e| format!("Sign response decode: {e}"))?;
+
+    // Step 2: submit the signed payload to the directory
+    let dir_base = directory_url.trim_end_matches('/');
+    let submit_resp = client
+        .post(format!("{dir_base}/api/hubs"))
+        .json(&serde_json::json!({
+            "hub_url": hub_url,
+            "tags": tags,
+            "language": language,
+            "bio": bio,
+            "invite_code": invite_code,
+            "canonical_payload": signed["canonical_payload"],
+            "hub_pubkey": signed["hub_pubkey"],
+            "signature": signed["signature"],
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Directory submit failed: {e}"))?;
+
+    if !submit_resp.status().is_success() {
+        return Err(format!(
+            "Directory rejected submission: {}",
+            submit_resp.text().await.unwrap_or_default()
+        ));
+    }
+
+    Ok(())
+}
+
 #[tauri::command]
 async fn list_friends(state: State<'_, AppState>) -> Result<Vec<FriendInfo>, String> {
     let (hub_url, token) = active_session(&state)?;
@@ -3462,6 +3526,7 @@ pub fn run() {
             send_alliance_channel_message,
             share_channel_with_alliance,
             unshare_channel_from_alliance,
+            submit_to_directory,
             list_friends,
             list_pending_friends,
             send_friend_request,

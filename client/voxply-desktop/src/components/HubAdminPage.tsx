@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type {
   BanInfo,
   Channel,
@@ -91,6 +92,32 @@ function hubToVoxplyUrl(hubUrl: string): string {
 
 export function HubAdminPage(props: HubAdminPageProps) {
   const [copiedShare, setCopiedShare] = useState(false);
+
+  const [dirTags, setDirTags] = useState("");
+  const [dirLanguage, setDirLanguage] = useState("en");
+  const [dirBio, setDirBio] = useState("");
+  const [dirInviteCode, setDirInviteCode] = useState("");
+  const [dirUrl, setDirUrl] = useState("https://discovery.voxply.io");
+  const [dirStatus, setDirStatus] = useState<"idle" | "submitting" | "ok" | "error">("idle");
+  const [dirError, setDirError] = useState("");
+
+  async function handleSubmitToDirectory() {
+    setDirStatus("submitting");
+    setDirError("");
+    try {
+      await invoke("submit_to_directory", {
+        directoryUrl: dirUrl,
+        tags: dirTags.split(",").map((t) => t.trim()).filter(Boolean),
+        language: dirLanguage.trim() || "en",
+        bio: dirBio,
+        inviteCode: dirInviteCode.trim() || null,
+      });
+      setDirStatus("ok");
+    } catch (e) {
+      setDirError(String(e));
+      setDirStatus("error");
+    }
+  }
 
   const tabs: { id: HubAdminTab; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -229,6 +256,71 @@ export function HubAdminPage(props: HubAdminPageProps) {
                   {copiedShare ? "Copied!" : "Copy link"}
                 </button>
               </div>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">Submit to directory</label>
+              <p className="muted">
+                List this hub on the Voxply discovery directory so others can
+                find it. Your hub signs the submission — no account needed.
+              </p>
+              <div className="settings-section">
+                <label className="settings-label">Tags</label>
+                <input
+                  type="text"
+                  placeholder="gaming, music, en (comma-separated)"
+                  value={dirTags}
+                  onChange={(e) => setDirTags(e.target.value)}
+                />
+              </div>
+              <div className="settings-section">
+                <label className="settings-label">Language</label>
+                <input
+                  type="text"
+                  placeholder="en"
+                  value={dirLanguage}
+                  onChange={(e) => setDirLanguage(e.target.value)}
+                />
+              </div>
+              <div className="settings-section">
+                <label className="settings-label">Bio</label>
+                <textarea
+                  rows={3}
+                  placeholder="Tell people what your hub is about…"
+                  value={dirBio}
+                  onChange={(e) => setDirBio(e.target.value)}
+                />
+              </div>
+              <div className="settings-section">
+                <label className="settings-label">Invite code (optional)</label>
+                <input
+                  type="text"
+                  placeholder="For invite-only hubs"
+                  value={dirInviteCode}
+                  onChange={(e) => setDirInviteCode(e.target.value)}
+                />
+              </div>
+              <div className="settings-section">
+                <label className="settings-label">Directory URL</label>
+                <input
+                  type="text"
+                  value={dirUrl}
+                  onChange={(e) => setDirUrl(e.target.value)}
+                />
+              </div>
+              {dirStatus === "ok" && (
+                <p className="muted" style={{ color: "var(--success)" }}>
+                  ✓ Hub listed on the directory.
+                </p>
+              )}
+              {dirStatus === "error" && (
+                <p className="error-text">{dirError}</p>
+              )}
+              <button
+                onClick={handleSubmitToDirectory}
+                disabled={dirStatus === "submitting"}
+              >
+                {dirStatus === "submitting" ? "Submitting…" : "Submit to directory"}
+              </button>
             </div>
           </section>
         )}
