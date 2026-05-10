@@ -92,6 +92,8 @@ interface Props {
   onSetPendingAttachments: (items: Attachment[]) => void;
   onAttachFiles: (files: FileList | null) => void;
   onOpenEditDescription: (channel: Channel) => void;
+  firstNotifyingMessageId: string | null;
+  onClearFirstNotify: () => void;
   onScrollToMessage: (id: string) => void;
   onSetMemberSidebarHidden: (v: boolean) => void;
   onSetSearchOpen: (v: boolean) => void;
@@ -124,7 +126,7 @@ export function ContentArea({
   onSend, onSendDm, onSendAllianceMessage,
   onPingTyping, onPingDmTyping,
   onSetPendingAttachments, onAttachFiles,
-  onOpenEditDescription, onScrollToMessage,
+  onOpenEditDescription, firstNotifyingMessageId, onClearFirstNotify, onScrollToMessage,
   onSetMemberSidebarHidden, onSetSearchOpen, onSetSearchQuery, onCloseSearch,
   onJumpToBottom, onMessagesScroll,
   onSetUserContextMenu, onSetEditingDraft, onInputTextChange, onKeyDown,
@@ -503,6 +505,18 @@ export function ContentArea({
                 })}
               <div ref={messagesEndRef} />
             </div>
+            {firstNotifyingMessageId &&
+              messages.some((m) => m.id === firstNotifyingMessageId) && (
+              <button
+                className="jump-to-bottom jump-to-notification"
+                onClick={() => {
+                  onScrollToMessage(firstNotifyingMessageId);
+                  onClearFirstNotify();
+                }}
+              >
+                ↑ Jump to first notification
+              </button>
+            )}
             {!stickToBottom && newWhileScrolledUp > 0 && (
               <button className="jump-to-bottom" onClick={onJumpToBottom}>
                 ↓ {newWhileScrolledUp} new

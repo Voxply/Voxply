@@ -482,8 +482,45 @@ function App() {
 
   const hasActiveHub = hubs.length > 0 && activeHubId !== null;
 
+  // Keep channels in a ref so the WS event handler can check visibility
+  // without capturing stale state. Used as the permission gate: messages for
+  // channel_ids absent from this list are silently dropped.
+  const channelsRef = useRef<Channel[]>([]);
+
+  // Per-channel first-notifying message ID. Set when a message first causes a
+  // pin (unread dot) to appear; cleared when the user reaches the bottom of
+  // the channel. Drives the "Jump to first notification" affordance.
+  const [firstNotifyId, setFirstNotifyId] = useState<
+    Record<string, Record<string, string>>
+  >({});
+
+  function setFirstNotify(hubId: string, channelId: string, messageId: string) {
+    setFirstNotifyId((prev) => {
+      const hubMap = prev[hubId] ?? {};
+      if (hubMap[channelId]) return prev; // already tracking one; keep the earliest
+      return { ...prev, [hubId]: { ...hubMap, [channelId]: messageId } };
+    });
+  }
+
+  function clearFirstNotify(hubId: string, channelId: string) {
+    setFirstNotifyId((prev) => {
+      const hubMap = prev[hubId];
+      if (!hubMap?.[channelId]) return prev;
+      const { [channelId]: _, ...rest } = hubMap;
+      return { ...prev, [hubId]: rest };
+    });
+  }
+
+  function clearHubFirstNotify(hubId: string) {
+    setFirstNotifyId((prev) => {
+      if (!prev[hubId] || Object.keys(prev[hubId]).length === 0) return prev;
+      return { ...prev, [hubId]: {} };
+    });
+  }
+
   // Chat state
   const [channels, setChannels] = useState<Channel[]>([]);
+  useEffect(() => { channelsRef.current = channels; }, [channels]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -916,6 +953,9 @@ function App() {
     const atBottom = distanceFromBottom < 120;
     if (atBottom !== stickToBottom) setStickToBottom(atBottom);
     if (atBottom && newWhileScrolledUp > 0) setNewWhileScrolledUp(0);
+    if (atBottom && activeHubId && selectedChannel) {
+      clearFirstNotify(activeHubId, selectedChannel.id);
+    }
   }
 
   function jumpToBottom() {
@@ -1022,6 +1062,12 @@ function App() {
           "chat-message",
           (event) => {
             const { hub_id, channel_id, message } = event.payload;
+
+            // Permission gate: drop messages for channels the client hasn't
+            // listed. Guards deleted/race-condition channels today; will guard
+            // per-channel ACLs when those land.
+            if (!channelsRef.current.some((c) => c.id === channel_id)) return;
+
             const isActiveHub = hub_id === activeHubIdRef.current;
             const isActiveChannel =
               isActiveHub && channel_id === selectedChannelIdRef.current;
@@ -1032,8 +1078,6 @@ function App() {
               mentionsName(message.content, myName);
 
             const mode = effectiveNotifyMode(hub_id, channel_id);
-            // Both "silent" and (non-mention messages in) "mentions" mode
-            // suppress the bump + ping + OS notif.
             const allowBump =
               mode === "all" || (mode === "mentions" && isMention);
 
@@ -1043,15 +1087,19 @@ function App() {
                 return [...prev, message];
               });
             } else if (allowBump) {
-              // Unread bump per channel. Mentions still bump even on the
-              // active hub so the dot shows on a channel the user isn't
-              // currently viewing.
-              if (!isActiveHub || isMention) {
-                bumpUnread(hub_id, channel_id);
-              }
+              bumpUnread(hub_id, channel_id);
+              setFirstNotify(hub_id, channel_id, message.id);
             }
 
-            if (isMention && !isActiveChannel && allowBump) {
+            // Notification (audio + OS): fires when the message would pin AND
+            // the channel isn't currently visible AND either it's a @mention
+            // or mode is "all" and the app window doesn't have focus.
+            const shouldNotify =
+              allowBump &&
+              !isActiveChannel &&
+              (isMention || (mode === "all" && !document.hasFocus()));
+
+            if (shouldNotify) {
               if (mentionPingRef.current) playMentionPing();
               if (
                 typeof Notification !== "undefined" &&
@@ -1060,9 +1108,15 @@ function App() {
                 const sender =
                   message.sender_name || formatPubkey(message.sender);
                 try {
-                  new Notification(`${sender} mentioned you`, {
-                    body: message.content.slice(0, 140),
-                  });
+                  const channelName =
+                    channelsRef.current.find((c) => c.id === channel_id)?.name ??
+                    channel_id;
+                  new Notification(
+                    isMention
+                      ? `${sender} mentioned you`
+                      : `New message in #${channelName}`,
+                    { body: message.content.slice(0, 140) },
+                  );
                 } catch {}
               }
             }
@@ -3220,7 +3274,7 @@ function App() {
                   onToggleCategoryCollapsed={toggleCategoryCollapsed}
                   onHubDropdownOpenChange={setHubDropdownOpen}
                   onSetHubMode={setHubMode}
-                  onClearHubUnread={clearHubUnread}
+                  onClearHubUnread={(hubId) => { clearHubUnread(hubId); clearHubFirstNotify(hubId); }}
                   onRemoveHub={handleRemoveHub}
                   onOpenHubAdmin={openHubAdmin}
                   onOpenHubAdminInvites={openHubAdminInvites}
@@ -3294,6 +3348,15 @@ function App() {
                   onSetPendingAttachments={setPendingAttachments}
                   onAttachFiles={attachFiles}
                   onOpenEditDescription={openEditDescription}
+                  firstNotifyingMessageId={
+                    activeHubId && selectedChannel
+                      ? (firstNotifyId[activeHubId]?.[selectedChannel.id] ?? null)
+                      : null
+                  }
+                  onClearFirstNotify={() => {
+                    if (activeHubId && selectedChannel)
+                      clearFirstNotify(activeHubId, selectedChannel.id);
+                  }}
                   onScrollToMessage={scrollToMessage}
                   onSetMemberSidebarHidden={setMemberSidebarHidden}
                   onSetSearchOpen={setSearchOpen}
