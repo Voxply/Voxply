@@ -7,14 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Hub discovery — Layer 1**: `voxply://` deep link registration,
-  rework "Add hub" dialog to accept address/link, hub preview card,
-  Share button in hub admin. Pure client work. Design: [`docs/hub-discovery.md`](docs/hub-discovery.md).
-- **Hub discovery — Layer 2**: `voxply-discovery` repo (directory
-  website + API), hub-side signing endpoint, "Submit to directory" admin
-  UI, client Discover tab.
-- **Hub discovery — Layer 3**: signed public hub profiles endpoint on
-  hub, "Public profile" settings UI, "Their hubs" on user cards.
+_Nothing queued — hub discovery (all three layers) just shipped. Pick from the wishlist below._
 
 ## 📌 Wishlist (undesigned)
 
