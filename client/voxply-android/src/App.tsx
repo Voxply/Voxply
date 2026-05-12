@@ -65,6 +65,7 @@ import { loadIdentity, saveIdentity, generateIdentity } from "./platform-android
 import { publicKeyHex, signBytes, dhKeypairFromSeed } from "@identity/crypto";
 import { seedToPhrase, phraseToSeed, validatePhrase } from "@identity/recovery";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open as openFilePicker } from "@tauri-apps/plugin-dialog";
 
 // ---- Types ----
 
@@ -244,6 +245,8 @@ export default function App() {
   // Voice-not-available toast
   const [voiceToast, setVoiceToast] = useState(false);
 
+  const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
+
   // === Identity init ===
 
   useEffect(() => {
@@ -364,6 +367,22 @@ export default function App() {
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
+
+  // === Update check ===
+
+  useEffect(() => {
+    if (ready !== "ok") return;
+    const CURRENT = "0.1.0";
+    fetch("https://releases.voxply.io/latest.json")
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        const latest = (data as Record<string, unknown>)?.["android-arm64"] as Record<string, unknown> | undefined;
+        if (latest?.version && latest.version !== CURRENT) {
+          setUpdateAvailable(latest.version as string);
+        }
+      })
+      .catch(() => {});
+  }, [ready]);
 
   // === Hub restore on startup ===
 
@@ -605,6 +624,41 @@ export default function App() {
     } catch {}
   }
 
+  // === Attachment picker ===
+
+  async function handleAttachFiles() {
+    try {
+      const selected = await openFilePicker({
+        multiple: true,
+        filters: [{ name: "Files", extensions: ["png","jpg","jpeg","gif","webp","mp4","pdf","zip","txt"] }],
+      });
+      if (!selected) return;
+      const files = Array.isArray(selected) ? selected : [selected];
+      const attachments: Attachment[] = await Promise.all(
+        files.map(async (path) => {
+          const name = path.split("/").pop() ?? path.split("\\").pop() ?? "file";
+          const ext = name.split(".").pop()?.toLowerCase() ?? "";
+          const mimeMap: Record<string, string> = {
+            png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+            gif: "image/gif", webp: "image/webp", mp4: "video/mp4",
+            pdf: "application/pdf", zip: "application/zip", txt: "text/plain",
+          };
+          const mime = mimeMap[ext] ?? "application/octet-stream";
+          const assetUrl = `asset://${path.replace(/\\/g, "/")}`;
+          const buf = await fetch(assetUrl).then((r) => r.arrayBuffer());
+          const bytes = new Uint8Array(buf);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const data_b64 = btoa(binary);
+          return { name, mime, data_b64 } satisfies Attachment;
+        })
+      );
+      setPendingAttachments((prev) => [...prev, ...attachments]);
+    } catch {
+      // User cancelled or permission denied — silently ignore
+    }
+  }
+
   // === Voice (not available on mobile) ===
 
   function showVoiceNotAvailable() {
@@ -757,6 +811,22 @@ export default function App() {
       title={selectedChannel?.name ?? selectedConversation?.id ?? "Voxply"}
       onBack={() => {}}
     >
+      {updateAvailable && (
+        <div style={{
+          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-md)", padding: "8px 16px", zIndex: 9999,
+          fontSize: "var(--text-sm)", color: "var(--text)",
+          display: "flex", gap: 12, alignItems: "center",
+        }}>
+          <span>Update available: v{updateAvailable}</span>
+          <a href="https://releases.voxply.io" target="_blank" rel="noreferrer"
+             style={{ color: "var(--accent)" }}>Download</a>
+          <button onClick={() => setUpdateAvailable(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
+        </div>
+      )}
+
       {voiceToast && (
         <div
           style={{
@@ -822,7 +892,7 @@ export default function App() {
         onPingTyping={() => {}}
         onPingDmTyping={() => {}}
         onSetPendingAttachments={setPendingAttachments}
-        onAttachFiles={() => {}}
+        onAttachFiles={handleAttachFiles}
         onOpenEditDescription={() => {}}
         firstNotifyingMessageId={firstNotifyingMessageId}
         onClearFirstNotify={() => setFirstNotifyingMessageId(null)}
