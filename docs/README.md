@@ -32,6 +32,7 @@ If you're new, read in this order:
 14. [multi-device.md](multi-device.md) — master+subkey identity, QR pairing protocol
 15. [e2e-encryption.md](e2e-encryption.md) — E2E encrypted DMs: X25519 from Ed25519 seed, static ECDH + AES-GCM, signed envelopes
 16. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
+17. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity, voice deferred
 
 ## Find by feature
 
