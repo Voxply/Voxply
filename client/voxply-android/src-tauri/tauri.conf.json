@@ -1,0 +1,31 @@
+{
+  "productName": "Voxply",
+  "version": "0.1.0",
+  "identifier": "com.voxply.android",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5174",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  },
+  "plugins": {
+    "deep-link": {
+      "mobile": [
+        {
+          "host": "voxply.io",
+          "pathPrefix": ["/invite"]
+        }
+      ]
+    }
+  }
+}
