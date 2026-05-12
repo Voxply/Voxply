@@ -1,0 +1,115 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+  tags:
+    - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 17 is the minimum required by AGP 8.x (Gradle's Android plugin).
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Installs build-tools;34.0.0, platforms;android-34, and the NDK.
+      # NDK 25.2.9519653 is the version recommended by Tauri 2 for Android targets.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: >-
+            build-tools;34.0.0
+            platforms;android-34
+            ndk;25.2.9519653
+
+      - name: Set up Rust (stable, Android targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/voxply-android/src-tauri
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: client/voxply-android/package-lock.json
+
+      # Gradle cache keyed on the wrapper/dependency lock files so it
+      # invalidates only when those files change.
+      - name: Restore Gradle cache
+        id: gradle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('client/voxply-android/src-tauri/gen/android/gradle*') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Install npm dependencies
+        working-directory: client/voxply-android
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: client/voxply-android
+        run: npx tsc --noEmit
+
+      # The keystore is decoded into /tmp — the runner's ephemeral disk.
+      # /tmp is not persisted between jobs or workflow runs, so the raw
+      # keystore bytes never survive beyond this single job execution.
+      - name: Decode release keystore
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/voxply.keystore
+
+      # When the keystore secret is present, the build is release-signed.
+      # When it is absent (e.g. a workflow_dispatch on an unsigned branch),
+      # the signing env vars are not set and Tauri falls back to a debug key.
+      - name: Build APK
+        working-directory: client/voxply-android
+        run: >-
+          cargo tauri android build
+          --target aarch64-linux-android
+          --target armv7-linux-androideabi
+        env:
+          TAURI_ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && '/tmp/voxply.keystore' || '' }}
+          TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAURI_ANDROID_KEY_ALIAS: voxply
+          TAURI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      # Gradle caches are saved after the build so warmed entries land for
+      # the next run. The step is skipped if the cache key already matched.
+      - name: Save Gradle cache
+        if: steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('client/voxply-android/src-tauri/gen/android/gradle*') }}
+
+      # Glob covers both release/ and debug/ output paths in case Tauri or
+      # the Gradle variant name changes between versions.
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxply-android-apk
+          path: client/voxply-android/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
