@@ -42,8 +42,6 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
     let mut dm_rx = state.dm_tx.subscribe();
     let mut voice_rx = state.voice_event_tx.subscribe();
     let mut screen_share_rx = state.screen_share_tx.subscribe();
-    let mut subscribed: HashSet<String> = HashSet::new();
-    let mut subscribe_all = false;
     let mut voice_channel: Option<String> = None;
     // When Some, the next binary WS frame is a screen-share chunk for this stream.
     // (channel_id, stream_id, seq, is_init)
@@ -60,12 +58,28 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
     .into_iter()
     .collect();
 
+    // Auto-subscribe to all channels the user is not banned from.
+    // Categories (is_category = 1) carry no messages so skip them.
+    let mut subscribed: HashSet<String> = sqlx::query_scalar::<_, String>(
+        "SELECT id FROM channels
+         WHERE is_category = 0
+           AND id NOT IN (
+               SELECT channel_id FROM channel_bans WHERE target_public_key = ?
+           )",
+    )
+    .bind(&public_key)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .collect();
+
     loop {
         tokio::select! {
             result = chat_rx.recv() => {
                 match result {
                     Ok(event) => {
-                        if subscribe_all || subscribed.contains(event.channel_id()) {
+                        if subscribed.contains(event.channel_id()) {
                             // Don't echo typing events back to the originator -- they
                             // already know they're typing.
                             if let crate::routes::chat_models::ChatEvent::Typing {
@@ -166,9 +180,6 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
                             }
                             Ok(WsClientMessage::Unsubscribe { channel_id }) => {
                                 subscribed.remove(&channel_id);
-                            }
-                            Ok(WsClientMessage::SubscribeAll) => {
-                                subscribe_all = true;
                             }
                             Ok(WsClientMessage::VoiceJoin { channel_id, udp_port }) => {
                                 // Moderation gates before adding the user to
@@ -482,7 +493,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
                     Ok(ev) => {
                         // Forward only to subscribers of the channel, never back to the sharer.
                         if ev.sharer_pubkey != public_key
-                            && (subscribe_all || subscribed.contains(&ev.channel_id))
+                            && subscribed.contains(&ev.channel_id)
                         {
                             let envelope = WsServerMessage::ScreenShareChunkOut {
                                 channel_id: ev.channel_id,
