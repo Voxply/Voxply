@@ -7,8 +7,11 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Android client icons** — placeholder solid-color PNGs in `client/voxply-android/src-tauri/icons/`. Run `cargo tauri icon <1024x1024.png>` once a logo exists.
-- **`subscribe_all` firehose fix** — every client receives every channel's WS messages just for unread tracking; replace with per-channel subscription on select.
+- **`subscribe_all` firehose fix** — hub sends every channel's WS events to every connected client instead of only subscribed ones; replace with per-channel subscribe/unsubscribe on navigation.
+
+## 🚧 Blocked
+
+- **Android client icons** — placeholder solid-color PNGs in place. Waiting on logo (see [`docs/brand.md`](docs/brand.md)). Run `cargo tauri icon <1024x1024.png>` once ready.
 
 ## 📌 Wishlist (undesigned)
 
