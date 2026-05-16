@@ -51,6 +51,12 @@ pub async fn run(pool: &SqlitePool) -> Result<()> {
     let _ = sqlx::query("ALTER TABLE channels ADD COLUMN description TEXT")
         .execute(pool)
         .await;
+    let _ = sqlx::query("ALTER TABLE channels ADD COLUMN icon TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("ALTER TABLE channels ADD COLUMN color TEXT")
+        .execute(pool)
+        .await;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS messages (

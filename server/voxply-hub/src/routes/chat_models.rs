@@ -20,6 +20,8 @@ pub struct ChannelResponse {
     pub is_category: bool,
     pub display_order: i64,
     pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
     pub created_at: i64,
 }
 
@@ -33,6 +35,10 @@ pub struct UpdateChannelRequest {
     /// `Some(None)` = move to top level.
     #[serde(default, deserialize_with = "deserialize_some")]
     pub parent_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub icon: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_some")]
+    pub color: Option<Option<String>>,
 }
 
 /// Lets us distinguish "field missing" from "field explicitly null" in JSON.

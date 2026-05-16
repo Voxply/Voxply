@@ -215,6 +215,8 @@ struct ChannelInfo {
     is_category: bool,
     display_order: i64,
     description: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
     created_at: i64,
 }
 
@@ -1241,6 +1243,29 @@ async fn move_channel(
     // Body always contains the parent_id key so the server treats it as a real
     // change (Option<Option<String>> tri-state).
     let body = serde_json::json!({ "parent_id": parent_id });
+    let resp = client
+        .patch(format!("{hub_url}/channels/{channel_id}"))
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_channel_appearance(
+    channel_id: String,
+    icon: Option<String>,
+    color: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({ "icon": icon, "color": color });
     let resp = client
         .patch(format!("{hub_url}/channels/{channel_id}"))
         .bearer_auth(&token)
@@ -3884,6 +3909,7 @@ pub fn run() {
             update_channel_description,
             rename_channel,
             move_channel,
+            update_channel_appearance,
             delete_channel,
             reorder_channels,
             list_users,

@@ -176,6 +176,8 @@ pub async fn create_channel(
             is_category: req.is_category,
             display_order: next_order,
             description: req.description,
+            icon: None,
+            color: None,
             created_at: now,
         }),
     ))
@@ -242,6 +244,24 @@ pub async fn update_channel(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
     }
 
+    if let Some(icon_opt) = &req.icon {
+        sqlx::query("UPDATE channels SET icon = ? WHERE id = ?")
+            .bind(icon_opt.as_deref())
+            .bind(&channel_id)
+            .execute(&state.db)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+    }
+
+    if let Some(color_opt) = &req.color {
+        sqlx::query("UPDATE channels SET color = ? WHERE id = ?")
+            .bind(color_opt.as_deref())
+            .bind(&channel_id)
+            .execute(&state.db)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+    }
+
     if let Some(name) = &req.name {
         let trimmed = name.trim();
         if trimmed.is_empty() {
@@ -283,7 +303,7 @@ pub async fn list_channels(
     _user: AuthUser,
 ) -> Result<Json<Vec<ChannelResponse>>, (StatusCode, String)> {
     let rows = sqlx::query_as::<_, ChannelRow>(
-        "SELECT id, name, created_by, parent_id, is_category, display_order, description, created_at
+        "SELECT id, name, created_by, parent_id, is_category, display_order, description, icon, color, created_at
          FROM channels
          ORDER BY display_order, created_at",
     )
@@ -301,6 +321,8 @@ pub async fn list_channels(
             is_category: r.is_category != 0,
             display_order: r.display_order,
             description: r.description,
+            icon: r.icon,
+            color: r.color,
             created_at: r.created_at,
         })
         .collect();
@@ -415,5 +437,7 @@ struct ChannelRow {
     is_category: i64,
     display_order: i64,
     description: Option<String>,
+    icon: Option<String>,
+    color: Option<String>,
     created_at: i64,
 }
