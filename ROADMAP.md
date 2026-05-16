@@ -27,7 +27,7 @@ items live in the wiki — see
 
 ## ⚠️ Known issues
 
-- No custom display font — system stack only
+_(none currently)_
 
 ## 💤 Won't do
 
