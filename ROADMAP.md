@@ -7,7 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Android client icons** — placeholder solid-color PNGs in place. Waiting on logo (see [`docs/brand.md`](docs/brand.md)). Run `cargo tauri icon <1024x1024.png>` once ready.
+- **Prefs blob sync** — QR pairing infrastructure is in place; the encrypted blob key is a placeholder (32 zero bytes). Real X25519 ECIES wrap + blob fetch on new-device pair is the remaining piece.
 
 ## 🚧 Blocked
 
@@ -23,11 +23,9 @@ items live in the wiki — see
 
 - **Performance ceiling** — load test WS broadcast, search, voice relay
 - **Accessibility + i18n** — keyboard nav audit, screen-reader, localization
-- **Prefs blob sync** — `set_home_hub_list` / QR pairing lands the infrastructure; the encrypted blob key is a placeholder (32 zero bytes). Real X25519 ECIES wrap + blob fetch on new-device pair is the remaining piece.
 
 ## ⚠️ Known issues
 
-- Avatars uploaded full-resolution to every hub — base64 in `users.avatar`; doesn't scale
 - No custom display font — system stack only
 
 ## 💤 Won't do
