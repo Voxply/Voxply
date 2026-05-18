@@ -21,7 +21,6 @@ import type {
   Conversation,
 } from "../types";
 import type { TreeNode, FlatNode } from "../utils/channels";
-import { colorForKey } from "../utils/format";
 import { PhoneOffIcon, ChannelIcon, PingIcon } from "./Icons";
 import { SortableCategoryItem, SortableChannelItem } from "./SortableItems";
 
@@ -69,6 +68,7 @@ interface Props {
   onOpenCreateChannel: (parentId: string | null, isCategory: boolean) => void;
   onSelectChannel: (channel: Channel) => void;
   onChannelContextMenu: (e: React.MouseEvent, channel: Channel) => void;
+  onOpenChannelSettings: (channel: Channel) => void;
   onVoiceJoin: (channel?: Channel) => void;
   onVoiceLeave: () => void;
   onSelectAllianceChannel: (alliance: AllianceInfo, channel: AllianceSharedChannel) => void;
@@ -92,19 +92,16 @@ export function ChannelSidebar({
   channelTree, effectiveNotifyMode, onToggleCategoryCollapsed,
   onHubDropdownOpenChange, onSetHubMode, onClearHubUnread, onRemoveHub,
   onOpenHubAdmin, onOpenHubAdminInvites, onOpenCreateChannel,
-  onSelectChannel, onChannelContextMenu, onVoiceJoin, onVoiceLeave,
+  onSelectChannel, onChannelContextMenu, onOpenChannelSettings,
+  onVoiceJoin, onVoiceLeave,
   onSelectAllianceChannel, onSelectConversation,
   onOpenFriends, onToggleSelfMute, onToggleSelfDeafen, onOpenSettings,
   onDragEnd, sharing, onScreenShare,
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [notifySubmenuOpen, setNotifySubmenuOpen] = useState(false);
+  const [hubCtxMenu, setHubCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const hubHeaderRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!hubDropdownOpen) setNotifySubmenuOpen(false);
-  }, [hubDropdownOpen]);
 
   useEffect(() => {
     if (!hubDropdownOpen) return;
@@ -121,7 +118,6 @@ export function ChannelSidebar({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  // DFS-flatten the tree, skipping children of collapsed categories.
   const flatVisible = useMemo((): FlatNode[] => {
     const result: FlatNode[] = [];
     function walk(nodes: TreeNode[]) {
@@ -197,32 +193,33 @@ export function ChannelSidebar({
                   Create category
                 </button>
               )}
-              <button
-                className="hub-dropdown-item hub-dropdown-submenu-trigger"
-                onClick={() => setNotifySubmenuOpen((v) => !v)}
-              >
-                Notifications {notifySubmenuOpen ? "▴" : "▸"}
-              </button>
-              {notifySubmenuOpen && activeHubId && (() => {
-                const cur = hubNotifyMode[activeHubId] ?? "all";
-                const items: { mode: NotifyMode; label: string }[] = [
-                  { mode: "all",      label: "All messages" },
-                  { mode: "mentions", label: "@mentions only" },
-                  { mode: "silent",   label: "Silence" },
-                ];
-                return items.map(({ mode, label }) => (
-                  <button
-                    key={mode}
-                    className="hub-dropdown-item hub-dropdown-subitem"
-                    onClick={() => {
-                      onHubDropdownOpenChange(false);
-                      onSetHubMode(activeHubId, mode);
-                    }}
-                  >
-                    {cur === mode ? "✓ " : "   "}{label}
-                  </button>
-                ));
-              })()}
+              <div className="hub-dropdown-submenu-group">
+                <button className="hub-dropdown-item hub-dropdown-submenu-trigger">
+                  Notifications ▸
+                </button>
+                <div className="hub-dropdown-subitems">
+                  {activeHubId && (() => {
+                    const cur = hubNotifyMode[activeHubId] ?? "all";
+                    const items: { mode: NotifyMode; label: string }[] = [
+                      { mode: "all",      label: "All messages" },
+                      { mode: "mentions", label: "@mentions only" },
+                      { mode: "silent",   label: "Silence" },
+                    ];
+                    return items.map(({ mode, label }) => (
+                      <button
+                        key={mode}
+                        className="hub-dropdown-item hub-dropdown-subitem"
+                        onClick={() => {
+                          onHubDropdownOpenChange(false);
+                          onSetHubMode(activeHubId, mode);
+                        }}
+                      >
+                        {cur === mode ? "✓ " : "   "}{label}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
               {activeHubId && Object.keys(unreadByChannel[activeHubId] ?? {}).length > 0 && (
                 <button
                   className="hub-dropdown-item"
@@ -248,10 +245,15 @@ export function ChannelSidebar({
         </div>
       )}
 
-      <div className="sidebar-scroll">
+      <div
+        className="sidebar-scroll"
+        onContextMenu={view === "channels" ? (e) => {
+          e.preventDefault();
+          setHubCtxMenu({ x: e.clientX, y: e.clientY });
+        } : undefined}
+      >
         {view !== "dms" ? (
           <>
-            {/* Channels — single flat SortableContext, DFS order */}
             <DndContext
               sensors={dndSensors}
               onDragStart={handleDragStart}
@@ -275,9 +277,9 @@ export function ChannelSidebar({
                         onToggleCollapsed={() => {
                           if (activeHubId) onToggleCategoryCollapsed(activeHubId, n.node.id);
                         }}
-                        onContextMenu={(e) => onChannelContextMenu(e, n.node)}
-                        onAddChannel={() => onOpenCreateChannel(n.node.id, false)}
-                        onAddSubcategory={() => onOpenCreateChannel(n.node.id, true)}
+                        onContextMenu={(e) => { e.stopPropagation(); onChannelContextMenu(e, n.node); }}
+                        onAdd={() => onOpenCreateChannel(n.node.id, false)}
+                        onSettings={isAdmin ? (_e) => onOpenChannelSettings(n.node) : undefined}
                       />
                     ) : (
                       <SortableChannelItem
@@ -291,8 +293,8 @@ export function ChannelSidebar({
                         style={{ paddingLeft: n.depth * CHANNEL_INDENT_PX }}
                         onClick={() => onSelectChannel(n.node)}
                         onDoubleClick={() => { if (voiceChannelId !== n.node.id) onVoiceJoin(n.node); }}
-                        onContextMenu={(e) => onChannelContextMenu(e, n.node)}
-                        onSettings={isAdmin ? (e) => onChannelContextMenu(e, n.node) : undefined}
+                        onContextMenu={(e) => { e.stopPropagation(); onChannelContextMenu(e, n.node); }}
+                        onSettings={isAdmin ? (_e) => onOpenChannelSettings(n.node) : undefined}
                       />
                     )
                   )}
@@ -313,7 +315,6 @@ export function ChannelSidebar({
             </DndContext>
             {channels.length === 0 && <p className="muted">No channels yet</p>}
 
-            {/* Alliances */}
             {userAlliances.length > 0 && (
               <div className="sidebar-alliances">
                 {userAlliances.map((a) => {
@@ -355,7 +356,6 @@ export function ChannelSidebar({
           </>
         ) : (
           <>
-            {/* DM conversations */}
             <div className="sidebar-header">
               <h3>Direct Messages</h3>
               <button className="btn-icon" onClick={onOpenFriends} title="Friends">
@@ -393,18 +393,75 @@ export function ChannelSidebar({
         )}
       </div>
 
-      {/* User footer */}
+      {view === "channels" && hubCtxMenu && (
+        <div
+          className="context-menu-overlay"
+          onClick={() => setHubCtxMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setHubCtxMenu(null); }}
+        >
+          <div
+            className="context-menu"
+            style={{ top: hubCtxMenu.y, left: hubCtxMenu.x }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isAdmin && (
+              <button className="context-menu-item" onClick={() => { setHubCtxMenu(null); onOpenCreateChannel(null, false); }}>
+                Create channel
+              </button>
+            )}
+            {isAdmin && (
+              <button className="context-menu-item" onClick={() => { setHubCtxMenu(null); onOpenCreateChannel(null, true); }}>
+                Create category
+              </button>
+            )}
+            {isAdmin && (
+              <button className="context-menu-item" onClick={() => { setHubCtxMenu(null); onOpenHubAdminInvites(); }}>
+                Invite people
+              </button>
+            )}
+            {isAdmin && (
+              <button className="context-menu-item" onClick={() => { setHubCtxMenu(null); onOpenHubAdmin(); }}>
+                Hub settings
+              </button>
+            )}
+            <div className="context-menu-submenu-group">
+              <button className="context-menu-item context-menu-submenu-trigger">Notifications ▸</button>
+              <div className="context-menu-submenu">
+                {activeHubId && (() => {
+                  const cur = hubNotifyMode[activeHubId] ?? "all";
+                  return ([
+                    { mode: "all" as NotifyMode, label: "All messages" },
+                    { mode: "mentions" as NotifyMode, label: "@mentions only" },
+                    { mode: "silent" as NotifyMode, label: "Silence" },
+                  ]).map(({ mode, label }) => (
+                    <button key={mode} className="context-menu-item context-menu-subitem" onClick={() => { setHubCtxMenu(null); onSetHubMode(activeHubId, mode); }}>
+                      {cur === mode ? "✓ " : "   "}{label}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
+            {activeHubId && Object.keys(unreadByChannel[activeHubId] ?? {}).length > 0 && (
+              <button className="context-menu-item" onClick={() => { setHubCtxMenu(null); if (activeHubId) onClearHubUnread(activeHubId); }}>
+                Mark all as read
+              </button>
+            )}
+            <button className="context-menu-item danger" onClick={() => { setHubCtxMenu(null); if (activeHubId) onRemoveHub(activeHubId); }}>
+              Leave hub
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="user-info">
         {voiceChannelId && (
           <>
-            {/* Row 1: voice channel name + ping */}
             <div className="voice-status-bar">
               <span className="status-dot online" />
               <span className="voice-status-label">#{voiceChannelName}</span>
               {activePing !== undefined && <PingIcon ping={activePing} />}
             </div>
 
-            {/* Row 2: voice controls */}
             <div className="user-actions">
               <div className="user-actions-icons">
                 <button
@@ -441,7 +498,6 @@ export function ChannelSidebar({
           </>
         )}
 
-        {/* Identity block — always visible */}
         <div className="user-identity">
           <div className="user-identity-avatar" />
           <div className="user-identity-details">

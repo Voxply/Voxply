@@ -134,8 +134,8 @@ export function SortableCategoryItem({
   isDragTarget,
   onToggleCollapsed,
   onContextMenu,
-  onAddChannel,
-  onAddSubcategory,
+  onAdd,
+  onSettings,
 }: {
   channel: Channel;
   children?: React.ReactNode;
@@ -145,8 +145,8 @@ export function SortableCategoryItem({
   isDragTarget?: boolean;
   onToggleCollapsed: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
-  onAddChannel: () => void;
-  onAddSubcategory: () => void;
+  onAdd: () => void;
+  onSettings?: (e: React.MouseEvent) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: channel.id });
@@ -156,8 +156,8 @@ export function SortableCategoryItem({
       ref={setNodeRef}
       className={`category-group ${isDragging ? "dragging" : ""}`}
       style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
+        transform: isDragTarget ? undefined : CSS.Transform.toString(transform),
+        transition: isDragTarget ? undefined : transition,
         ...style,
       }}
     >
@@ -185,17 +185,19 @@ export function SortableCategoryItem({
         {collapsed && childCount > 0 && (
           <span className="category-count">{childCount}</span>
         )}
+        {onSettings && (
+          <button
+            className="btn-icon-small"
+            onClick={(e) => { e.stopPropagation(); onSettings(e); }}
+            title="Category settings"
+          >
+            ⚙
+          </button>
+        )}
         <button
           className="btn-icon-small"
-          onClick={(e) => { e.stopPropagation(); onAddSubcategory(); }}
-          title="Add subcategory"
-        >
-          ≡+
-        </button>
-        <button
-          className="btn-icon-small"
-          onClick={(e) => { e.stopPropagation(); onAddChannel(); }}
-          title="Add channel"
+          onClick={(e) => { e.stopPropagation(); onAdd(); }}
+          title="Add channel or category"
         >
           +
         </button>

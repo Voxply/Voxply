@@ -60,6 +60,7 @@ import { CreateChannelModal } from "./components/CreateChannelModal";
 import { FriendsModal } from "./components/FriendsModal";
 import { EditDescriptionModal } from "./components/EditDescriptionModal";
 import { ChannelContextMenu } from "./components/ChannelContextMenu";
+import { ChannelSettingsModal } from "./components/ChannelSettingsModal";
 import { ChannelAppearanceModal } from "./components/ChannelAppearanceModal";
 import { UserContextMenu } from "./components/UserContextMenu";
 import { HubSidebar } from "./components/HubSidebar";
@@ -626,6 +627,7 @@ function App() {
   const [editDescriptionValue, setEditDescriptionValue] = useState("");
 
   const [appearanceChannel, setAppearanceChannel] = useState<Channel | null>(null);
+  const [channelSettingsModal, setChannelSettingsModal] = useState<Channel | null>(null);
 
   // Channel-bans dialog. Stores the channel we're managing bans for so the
   // modal can fetch + mutate without round-tripping through context menu state.
@@ -2953,6 +2955,7 @@ function App() {
                   onOpenCreateChannel={openCreateChannelUnder}
                   onSelectChannel={selectChannel}
                   onChannelContextMenu={openContextMenu}
+                  onOpenChannelSettings={(ch) => setChannelSettingsModal(ch)}
                   onVoiceJoin={voice.handleVoiceJoin}
                   onVoiceLeave={voice.handleVoiceLeave}
                   onSelectAllianceChannel={selectAllianceChannel}
@@ -3105,9 +3108,6 @@ function App() {
             effectiveNotifyMode={effectiveNotifyMode}
             onClose={() => setContextMenu(null)}
             onRename={handleRenameChannel}
-            onEditDescription={openEditDescription}
-            onSetTalkPower={handleSetTalkPower}
-            onManageBans={(channelId, channelName) => setChannelBansModal({ channelId, channelName })}
             onSetMode={setChannelMode}
             onOpenCreateChannel={openCreateChannelUnder}
             onEditAppearance={handleEditAppearance}
@@ -3130,6 +3130,25 @@ function App() {
             channel={appearanceChannel}
             onSave={(icon, color, customIconSvg) => handleSaveAppearance(appearanceChannel, icon, color, customIconSvg)}
             onClose={() => setAppearanceChannel(null)}
+          />
+        )}
+
+        {channelSettingsModal && (
+          <ChannelSettingsModal
+            channel={channelSettingsModal}
+            isAdmin={isAdmin}
+            onSaveAppearance={(icon, color, svg) => handleSaveAppearance(channelSettingsModal, icon, color, svg)}
+            onSaveDescription={async (desc) => {
+              try {
+                await invoke("update_channel_description", { channelId: channelSettingsModal.id, description: desc ? desc : null });
+                setChannels(prev => prev.map(c => c.id === channelSettingsModal.id ? { ...c, description: desc ? desc : null } : c));
+                if (selectedChannel?.id === channelSettingsModal.id) {
+                  setSelectedChannel({ ...selectedChannel, description: desc ? desc : null });
+                }
+              } catch (e) { setError(String(e)); }
+            }}
+            onManageBans={() => setChannelBansModal({ channelId: channelSettingsModal.id, channelName: channelSettingsModal.name })}
+            onClose={() => setChannelSettingsModal(null)}
           />
         )}
 

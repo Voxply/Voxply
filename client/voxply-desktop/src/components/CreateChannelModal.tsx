@@ -21,8 +21,24 @@ export function CreateChannelModal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>
           Create {isCategory ? "Category" : "Channel"}
-          {parentId && " (under category)"}
+          {parentId ? " (inside category)" : ""}
         </h3>
+        <div className="channel-type-row">
+          <button
+            type="button"
+            className={`channel-type-btn ${!isCategory ? "selected" : ""}`}
+            onClick={() => onIsCategoryChange(false)}
+          >
+            Channel
+          </button>
+          <button
+            type="button"
+            className={`channel-type-btn ${isCategory ? "selected" : ""}`}
+            onClick={() => onIsCategoryChange(true)}
+          >
+            Category
+          </button>
+        </div>
         <input
           type="text"
           value={name}
@@ -41,16 +57,6 @@ export function CreateChannelModal({
             placeholder="Channel description (optional) — shown in the channel header"
             rows={3}
           />
-        )}
-        {!parentId && (
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={isCategory}
-              onChange={(e) => onIsCategoryChange(e.target.checked)}
-            />
-            Create as category (holds other channels)
-          </label>
         )}
         <div className="modal-actions">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
