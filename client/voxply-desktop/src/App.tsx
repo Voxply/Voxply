@@ -2889,19 +2889,21 @@ function App() {
 
                 <p className="welcome-section-heading">Join your first hub</p>
                 <div className="welcome-cta-row">
-                  <button className="primary" onClick={() => setShowAddHub(true)}>
-                    Add your first hub
+                  <button className="primary" onClick={() => setShowDiscover(true)}>
+                    Browse public hubs
+                  </button>
+                  <button className="btn-secondary" onClick={() => setShowAddHub(true)}>
+                    Add by URL
                   </button>
                   {DEMO_HUB_URL && (
                     <button className="btn-secondary" onClick={openDemoHub}>
-                      Try a demo hub
+                      Try demo hub
                     </button>
                   )}
                 </div>
                 <p className="welcome-hint muted">
-                  Don't have one? Ask a friend for a hub URL, paste an
-                  invite link, or run a hub yourself — see{" "}
-                  <code>docs/hosting.md</code> in the repo.
+                  Browse public hubs to find communities to join, or paste
+                  a hub URL directly if you already have one.
                 </p>
               </div>
             ) : myApprovalStatus === "pending" ? (
