@@ -81,7 +81,14 @@ export function SettingsPage(props: SettingsPageProps) {
               joined_at: Math.floor(Date.now() / 1000),
             }))
         : [];
-      await invoke("save_public_profile", { entries });
+      const activeProfile =
+        props.profiles.find((p) => p.id === props.defaultProfileId) ??
+        props.profiles[0];
+      await invoke("save_public_profile", {
+        entries,
+        displayName: activeProfile?.display_name ?? "",
+        avatar: activeProfile?.avatar ?? null,
+      });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (e) {
