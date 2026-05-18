@@ -1241,6 +1241,74 @@ select,
   width: 100%;
 }
 
+.alliance-share-code-block {
+  margin-top: var(--space-3);
+}
+
+.alliance-share-code-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.alliance-share-code {
+  flex: 1;
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: var(--text-xs);
+  word-break: break-all;
+  color: var(--text);
+}
+
+.act-category {
+  margin-bottom: var(--space-1);
+}
+
+.act-category-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.act-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 var(--space-1);
+  font-size: 11px;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.act-collapse-btn:hover {
+  background: transparent;
+  color: var(--text);
+}
+
+.act-category-label {
+  font-size: var(--text-sm);
+}
+
+.act-children {
+  margin-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.act-channel {
+  font-size: var(--text-sm);
+}
+
+.act-toplevel {
+  margin-left: var(--space-4);
+}
+
 /* ============================================================
    MEMBERS TABLE (admin)
    ============================================================ */
