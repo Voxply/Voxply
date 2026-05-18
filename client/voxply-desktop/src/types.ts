@@ -297,5 +297,6 @@ export interface PendingAllianceInvite {
   from_hub_name: string;
   from_hub_public_key: string;
   invite_token: string;
+  message: string | null;
   created_at: number;
 }

@@ -15,6 +15,7 @@ import { MemberRow } from "./MemberRow";
 import { RoleCreator } from "./RoleCreator";
 import { RoleEditor } from "./RoleEditor";
 import { AlliancesSection } from "./AlliancesSection";
+import { AllianceInvitesSection } from "./AllianceInvitesSection";
 import { HubIconsSection } from "./HubIconsSection";
 import { HubBotsSection } from "./HubBotsSection";
 
@@ -26,6 +27,7 @@ export type HubAdminTab =
   | "bans"
   | "invites"
   | "alliances"
+  | "alliance-invites"
   | "icons"
   | "bots";
 
@@ -144,6 +146,7 @@ export function HubAdminPage(props: HubAdminPageProps) {
     { id: "bans", label: "Bans" },
     { id: "invites", label: "Invites" },
     { id: "alliances", label: "Alliances" },
+    { id: "alliance-invites", label: "Alliance invites" },
     { id: "icons", label: "Icons" },
     { id: "bots", label: "Bots" },
   ];
@@ -556,6 +559,9 @@ export function HubAdminPage(props: HubAdminPageProps) {
             channels={props.channels}
             ownHubUrl={props.activeHubUrl}
           />
+        )}
+        {props.tab === "alliance-invites" && (
+          <AllianceInvitesSection ownHubUrl={props.activeHubUrl} />
         )}
         {props.tab === "icons" && (
           <section>

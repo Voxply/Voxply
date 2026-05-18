@@ -4768,3 +4768,98 @@ select:focus {
   display: flex;
   gap: 8px;
 }
+
+/* ============================================================
+   ALLIANCE INVITES TAB
+   ============================================================ */
+.alliance-invites-empty {
+  margin-top: var(--space-6);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.alliance-invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.alliance-invite-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.alliance-invite-card-header {
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-elevated));
+  border-bottom: 1px solid var(--border);
+}
+
+.alliance-invite-card-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  margin-bottom: var(--space-1);
+}
+
+.alliance-invite-card-meta {
+  font-size: var(--text-sm);
+}
+
+.alliance-invite-card-url {
+  font-size: var(--text-xs);
+  opacity: 0.75;
+}
+
+.alliance-invite-card-message {
+  padding: var(--space-3) var(--space-4);
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+}
+
+.alliance-invite-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.alliance-invite-card-date {
+  font-size: var(--text-xs);
+}
+
+.alliance-invite-card-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btn-accept {
+  background: var(--color-success, #2d7d2d);
+  color: #fff;
+  border: none;
+  box-shadow: none;
+}
+
+.btn-accept:hover {
+  background: color-mix(in srgb, var(--color-success, #2d7d2d) 80%, #fff);
+}
+
+.btn-decline {
+  background: transparent;
+  color: var(--color-error, #c0392b);
+  border: 1px solid currentColor;
+  box-shadow: none;
+}
+
+.btn-decline:hover {
+  background: color-mix(in srgb, var(--color-error, #c0392b) 10%, transparent);
+}

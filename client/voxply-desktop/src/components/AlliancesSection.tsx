@@ -6,7 +6,6 @@ import type {
   AllianceInvite,
   AllianceSharedChannel,
   Channel,
-  PendingAllianceInvite,
 } from "../types";
 
 type AllianceTab = "members" | "channels" | "invite";
@@ -27,8 +26,8 @@ export function AlliancesSection({
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<AllianceTab>("members");
 
-  const [pendingInvites, setPendingInvites] = useState<PendingAllianceInvite[]>([]);
   const [pushTargetUrl, setPushTargetUrl] = useState("");
+  const [pushMessage, setPushMessage] = useState("");
   const [pushSending, setPushSending] = useState(false);
 
   const [isCreating, setIsCreating] = useState(false);
@@ -50,8 +49,7 @@ export function AlliancesSection({
         setDetail(null);
         setShared([]);
       }
-      const pending = await invoke<PendingAllianceInvite[]>("list_pending_alliance_invites");
-      setPendingInvites(pending);
+
     } catch (e) {
       setError(String(e));
     }
@@ -172,22 +170,15 @@ export function AlliancesSection({
         allianceId: selectedId,
         targetHubUrl: pushTargetUrl.trim(),
         ownHubUrl: ownHubUrl,
+        message: pushMessage.trim() || null,
       });
       setPushTargetUrl("");
+      setPushMessage("");
       setError(null);
     } catch (e) {
       setError(String(e));
     } finally {
       setPushSending(false);
-    }
-  }
-
-  async function handleRespondInvite(inviteId: string, accept: boolean) {
-    try {
-      await invoke("respond_to_alliance_invite", { inviteId, accept });
-      await refresh();
-    } catch (e) {
-      setError(String(e));
     }
   }
 
@@ -240,28 +231,6 @@ export function AlliancesSection({
         {/* ── Left: list + inline create ── */}
         <div className="alliances-list-panel">
           <div className="alliances-list">
-            <div className="alliance-pending-section">
-              <div className="alliance-pending-header">
-                Pending invites
-                {pendingInvites.length > 0 && (
-                  <span className="alliance-pending-badge">{pendingInvites.length}</span>
-                )}
-              </div>
-              {pendingInvites.length === 0 ? (
-                <p className="alliances-empty-hint muted">None</p>
-              ) : (
-                pendingInvites.map((inv) => (
-                  <div key={inv.id} className="alliance-pending-item">
-                    <div className="alliance-pending-name">{inv.alliance_name}</div>
-                    <div className="alliance-pending-from muted">{inv.from_hub_name}</div>
-                    <div className="alliance-pending-actions">
-                      <button onClick={() => handleRespondInvite(inv.id, true)}>Accept</button>
-                      <button className="btn-secondary" onClick={() => handleRespondInvite(inv.id, false)}>Decline</button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
             {alliances.length === 0 && !isCreating && (
               <p className="alliances-empty-hint muted">No alliances yet</p>
             )}
@@ -434,25 +403,34 @@ export function AlliancesSection({
                     <div className="alliance-invite-section">
                       <label className="settings-label">Send invite directly</label>
                       <p className="muted">
-                        Enter another hub's URL to send them an invite request. They'll see
-                        it in their Alliances section and can accept or decline.
+                        Enter another hub's URL to send them an alliance invite.
+                        Their admin will see it in Hub Settings → Alliance invites.
                       </p>
                       <div className="alliance-join-row">
                         <input
                           type="text"
                           value={pushTargetUrl}
                           onChange={(e) => setPushTargetUrl(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleSendPushInvite(); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && !pushMessage) handleSendPushInvite(); }}
                           placeholder="https://other-hub.example.com"
                           disabled={pushSending}
                         />
-                        <button
-                          onClick={handleSendPushInvite}
-                          disabled={!pushTargetUrl.trim() || pushSending}
-                        >
-                          {pushSending ? "Sending…" : "Send invite"}
-                        </button>
                       </div>
+                      <textarea
+                        value={pushMessage}
+                        onChange={(e) => setPushMessage(e.target.value)}
+                        placeholder="Optional message to the other hub's admin…"
+                        rows={2}
+                        disabled={pushSending}
+                        style={{ marginTop: "var(--space-2)", resize: "vertical" }}
+                      />
+                      <button
+                        onClick={handleSendPushInvite}
+                        disabled={!pushTargetUrl.trim() || pushSending}
+                        style={{ marginTop: "var(--space-2)" }}
+                      >
+                        {pushSending ? "Sending…" : "Send invite"}
+                      </button>
                     </div>
 
                     <div className="alliance-invite-section">
