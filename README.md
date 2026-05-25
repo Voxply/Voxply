@@ -22,7 +22,7 @@ community-built games — all keypair-based identity, no central servers.
   and glossary.
 - [`ROADMAP.md`](ROADMAP.md) — what's next, known issues, undesigned
   wishlist, and explicit "won't do" decisions.
-- [`hub/openapi.yaml`](https://github.com/Voxply/Voxply-server/blob/main/openapi.yaml) — full API spec (OpenAPI 3.0). Reference for client implementors.
+- [`openapi.yaml`](openapi.yaml) — full API spec (OpenAPI 3.0). Reference for client implementors.
 
 ## Features
 
