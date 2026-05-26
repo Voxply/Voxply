@@ -269,11 +269,13 @@ doesn't care that the actor is a bot.
 
 ### What a bot *cannot* do
 
-Hard-coded, regardless of role:
+Hard-coded in v1, regardless of role:
 
-- **Cannot join voice.** The voice relay (`voice/` crate in
-  Voxply-desktop) is rejected at the UDP handshake when the session
-  token carries `kind: 'bot'`.
+- **Cannot join voice (v1).** The voice relay (`voice/` crate in
+  Voxply-desktop) currently handles only human microphone streams and
+  has no audio-injection path for bot processes. Blocked for now, not
+  forever — see *What's deferred* below for the voice-bot design space
+  (music playback, TTS, translation).
 - **Cannot send DMs from a bot identity** (v1). The DM outbox model
   ([federation.md](federation.md)) assumes a human-curated friend
   graph; bot DMs are a separate design space. Deferred.
@@ -419,3 +421,16 @@ every bot.
 - **Sandboxed in-hub bot execution** — running bot code inside the
   hub process (the internal-service-account path) is already shipped;
   external bots intentionally run outside the hub for isolation.
+- **Voice bots** — music playback, TTS, live translation, and
+  recording bots are all valid use cases and explicitly wanted. The
+  blocker is the voice relay (`voice/` crate): it only handles
+  microphone capture today and has no bot audio-injection path. What
+  needs to be added: a bot-audio input channel in the relay (a bot
+  process pushes a PCM/Opus stream over a local or network socket; the
+  relay mixes it into the voice channel the same way it would a
+  human's mic). The `kind: 'bot'` session-token check at the UDP
+  handshake should become a capability gate (`can_speak_voice`) rather
+  than a hard reject. Design note: a music bot connecting to N hubs
+  simultaneously is a significant bandwidth multiplier on the relay —
+  rate-limit and admin-permission scaffolding needs to be in place
+  before enabling this.
