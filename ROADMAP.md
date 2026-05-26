@@ -11,7 +11,7 @@ _(nothing queued — see wishlist below)_
 
 ## 🚧 Blocked
 
-- **Android client icons** — placeholder solid-color PNGs in place. Waiting on logo (see [`docs/brand.md`](docs/brand.md)). Run `cargo tauri icon <1024x1024.png>` once ready.
+_(nothing blocked)_
 
 ## 📌 Wishlist (undesigned)
 
