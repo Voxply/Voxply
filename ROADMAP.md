@@ -7,17 +7,6 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **External bots — backend completion** — foundation shipped (migrations, auth,
-  CRUD routes, slash dispatch, ephemeral messages, incoming webhooks). Still needed:
-  - `hub/src/bots/events.rs` — event subscription fan-out: publish hub events to
-    subscribed bot WS sessions, write to `hub_audit_log` (design: `docs/bots.md` §8)
-  - Component interaction dispatch — `component_interaction` WS envelope → signed
-    webhook POST → `ComponentResponse` apply (design: `docs/bots.md` §11)
-  - `GET /admin/audit-log` route — paginated, filterable (design: `docs/bots.md` §8)
-  - Event replay on reconnect — `seq` on audit log, `resume` / `replay_complete`
-    envelopes (design: `docs/bots.md` §12)
-  - `token_expiring_soon` WS push 72 h before session expiry (design: `docs/bots.md` §1)
-
 - **External bots — remaining UI** — shipped. No remaining frontend items.
   Completed: component interaction WS send with optimistic disable, BotCard popover,
   ExternalBotSection with invite token + channel scope selector, WebhooksSection,
