@@ -7,19 +7,9 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **External bots — remaining UI** — shipped. No remaining frontend items.
-  Completed: component interaction WS send with optimistic disable, BotCard popover,
-  ExternalBotSection with invite token + channel scope selector, WebhooksSection,
-  Integrations tab in HubAdminPage (desktop + web).
-
-- **Android client — bots rendering parity** — shipped. BOT/APP badges, ephemeral
-  message styling, `MessageEmbeds`, `MessageComponents`, and Bots subsection in
-  member list all ported. Component interaction dispatch is a no-op on Android
-  pending the hub HTTP interaction endpoint.
-
-- **Activities button** — design complete (`docs/gaming.md`). Channel toolbar button
-  opens a game picker modal over hub-installed games; feeds the same Tier 1 iframe
-  sandbox. Implement in desktop + web + Android clients.
+- **Android component interaction dispatch** — component buttons on Android are
+  render-only; need a platform HTTP/WS command wired up once the hub interaction
+  endpoint stabilises.
 
 ## 🚧 Blocked
 
