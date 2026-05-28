@@ -7,9 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Farm discovery website integration** (Voxply-discovery) — `POST /farms/register`
-  signed self-submission, `GET /farms` catalog with country/region/language/tag filters,
-  revalidation cron. Detailed design in [`farm-impl.md`](docs/farm-impl.md) section E.
+_(nothing — see wishlist for upcoming work)_
 
 ## 🚧 Blocked
 
@@ -28,8 +26,7 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-_(Farm Phase 2 shipped — see commit history)_
-_(Farm Phase 3 client shipped — FarmSettingsPage, CreateHubWizard, hub sidebar popover)_
+_(nothing — all designed items are either in progress or shipped)_
 
 ## ⚠️ Known issues
 
