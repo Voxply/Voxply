@@ -7,12 +7,12 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Farm Phase 1 — client integration** — hub advertises `farm_url` in `GET /info`;
-  clients need to branch on it and route `/auth/*` calls to the farm URL instead of
-  the hub. Desktop, web, and Android. No new UI — transparent to the user.
-- **Farm Phase 3 (admin panel)** — creation policy (`open`/`admin_only`/`disabled`),
-  `PATCH /farm/settings`, hub suspend/delete admin UI, user index. Detailed design
-  in [`farm-impl.md`](docs/farm-impl.md).
+- **Farm Phase 3 client side** — desktop `FarmSettingsPage` (General/Hubs/Users tabs),
+  `CreateHubModal` (farm picker → form → result), hub sidebar `+` popover, Discover
+  page "Host your own community" section. Backend routes shipped; client work remaining.
+- **Farm discovery website integration** (Voxply-discovery) — `POST /farms/register`
+  signed self-submission, `GET /farms` catalog with country/region/language/tag filters,
+  revalidation cron. Detailed design in [`farm-impl.md`](docs/farm-impl.md) section E.
 
 ## 🚧 Blocked
 
