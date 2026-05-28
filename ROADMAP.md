@@ -7,9 +7,6 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Farm Phase 3 client side** — desktop `FarmSettingsPage` (General/Hubs/Users tabs),
-  `CreateHubModal` (farm picker → form → result), hub sidebar `+` popover, Discover
-  page "Host your own community" section. Backend routes shipped; client work remaining.
 - **Farm discovery website integration** (Voxply-discovery) — `POST /farms/register`
   signed self-submission, `GET /farms` catalog with country/region/language/tag filters,
   revalidation cron. Detailed design in [`farm-impl.md`](docs/farm-impl.md) section E.
@@ -32,6 +29,7 @@ items live in the wiki — see
 ## 🧭 Designed, not started
 
 _(Farm Phase 2 shipped — see commit history)_
+_(Farm Phase 3 client shipped — FarmSettingsPage, CreateHubWizard, hub sidebar popover)_
 
 ## ⚠️ Known issues
 
