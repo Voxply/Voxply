@@ -7,7 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Accessibility + i18n** — Phase 1 keyboard nav shipped (focus rings, FocusTrap, roving tabindex, global shortcuts, KeyboardShortcuts modal — both desktop and web). Phase 2: ARIA/screen-reader. Phase 3: string extraction. See [`docs/accessibility.md`](docs/accessibility.md)
+- **Accessibility + i18n** — Phases 1 (keyboard nav), 2 (ARIA), and 3 (string extraction) shipped. ~465-key catalog across en/it/es/de; all components use t(). See [`docs/accessibility.md`](docs/accessibility.md)
 
 ## 🚧 Blocked
 
