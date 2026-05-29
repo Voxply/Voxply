@@ -27,12 +27,19 @@ they aren't enforced yet.
 
 ### Layer 2 — hub certification (reputation)
 
+**Status**: design committed. The canonical doc is
+[hub-certifications.md](hub-certifications.md). Summary:
+
 - Hub signs a statement: "user X has been a member since Y in good
   standing."
 - Signature is verifiable by anyone (hub's pubkey is published via `/info`).
 - Users collect certifications from multiple hubs — a reputation
-  portfolio.
-- Other hubs can require certifications from trusted hubs.
+  portfolio held on the home hub list.
+- Other hubs can require certifications from trusted hubs, and can
+  trust a cert's carried PoW level instead of recomputing it
+  (cross-hub portable PoW credit).
+- Same Ed25519 signer as badges ([server-tags.md](server-tags.md)),
+  `subject_kind: "user"`.
 
 ### Also considered
 

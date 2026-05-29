@@ -37,8 +37,10 @@ If you're new, read in this order:
 13. [home-hub.md](home-hub.md) — personal-axis state: home hub list, replication, DM canonicalization
 14. [multi-device.md](multi-device.md) — master+subkey identity, QR pairing protocol
 15. [e2e-encryption.md](e2e-encryption.md) — E2E encrypted DMs: X25519 from Ed25519 seed, static ECDH + AES-GCM, signed envelopes
+    - [identity-recovery.md](identity-recovery.md) — recovery UX beyond the phrase: passphrase-wrapped `.voxply-backup` export/import + per-hub recovery contacts (vouch, not auto-grant)
 16. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
     - [server-tags.md](server-tags.md) — self-tags (discovery keywords) + portable signed hub badges
+    - [hub-certifications.md](hub-certifications.md) — anti-spam Layer 2: hub-signs-user reputation certs, portable PoW credit
 17. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity, voice deferred
 18. [android-client.md](android-client.md) — Tauri 2 Android wrapper around the browser platform layer, side-loaded APK
 19. [install-android.md](install-android.md) — end-user guide: enable unknown sources, download APK, Play Protect warning
@@ -47,6 +49,8 @@ If you're new, read in this order:
 22. [monetization.md](monetization.md) — self-funding without subscriptions: cosmetic-only missions, donations, farm hosting plans
 23. [accessibility.md](accessibility.md) — keyboard navigation, ARIA / screen-reader support, i18n strategy across desktop / web / Android
 24. [forum.md](forum.md) — forum channel type: post-list variant, posts + reply threads, `create_posts`/`manage_posts` permissions, FTS search
+25. [screen-share-webrtc.md](screen-share-webrtc.md) — screen share v2: WebRTC P2P, hub as SDP/ICE signaler, optional TURN, v1-relay fallback floor, multi-sharer forward-compat, v3 SFU
+26. [block-mute-ignore.md](block-mute-ignore.md) — user-level block / ignore / quiet-hours (DND): personal-axis prefs-blob state, client-side filtering, server-enforced DM block
 
 ## Find by feature
 
@@ -57,7 +61,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Keypair, recovery phrase, auth** — [identity.md](identity.md)
 - **Roles & permissions** — [data-model.md](data-model.md), [decisions.md](decisions.md)
 - **Moderation (ban / mute / timeout / kick, approval queue)** — [data-model.md](data-model.md)
-- **Local block / ignore (per device)** — [client.md](client.md)
+- **Block / ignore / quiet-hours (DND)** — [block-mute-ignore.md](block-mute-ignore.md); legacy per-device store in [client.md](client.md)
 
 ### Messaging
 - **Text channels & categories** — [data-model.md](data-model.md), [client.md](client.md)
@@ -81,7 +85,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Push-to-talk** — [voice.md](voice.md)
 - **Self-mute / self-deafen** — [voice.md](voice.md)
 - **Voice participant list in sidebar** — [client.md](client.md)
-- **Screen share + webcam (designed, not built)** — [screen-share.md](screen-share.md)
+- **Screen share + webcam (designed, not built)** — [screen-share.md](screen-share.md) (v1 transport), [screen-share-webrtc.md](screen-share-webrtc.md) (v2 WebRTC migration)
 
 ### Federation
 - **Hub-to-hub auth** — [identity.md](identity.md), [federation.md](federation.md)
@@ -92,6 +96,7 @@ Reading order is for learning the system end-to-end. This section is for
 
 ### Notifications & UI
 - **Three-state notifications (all / mentions / silent)** — [data-model.md](data-model.md), [client.md](client.md), [decisions.md](decisions.md)
+- **Quiet hours / DND (notification downgrade)** — [block-mute-ignore.md](block-mute-ignore.md)
 - **System tray + OS notifications + sound** — [client.md](client.md)
 - **Window title unread count** — [client.md](client.md)
 - **Themes (Calm / Classic / Linear / Light)** — [client.md](client.md)
@@ -99,9 +104,9 @@ Reading order is for learning the system end-to-end. This section is for
 - **Hub drag-drop reorder, /info preview, clear local data** — [client.md](client.md)
 
 ### Future direction (designed, not built)
-- **Anti-spam (PoW + hub certifications)** — [future-features.md](future-features.md)
+- **Anti-spam (PoW + hub certifications)** — [future-features.md](future-features.md), [hub-certifications.md](hub-certifications.md)
 - **Channel ban, voice mute, talk power** — [future-features.md](future-features.md)
-- **Identity recovery (device linking, recovery contacts)** — [future-features.md](future-features.md)
+- **Identity recovery (backup export, recovery contacts, device linking)** — [identity-recovery.md](identity-recovery.md), [future-features.md](future-features.md)
 - **Bots & integrations** — [bots.md](bots.md), [future-features.md](future-features.md)
 - **Nested channels + max depth hub setting** — [future-features.md](future-features.md)
 - **Forum channel type (post-list variant)** — [forum.md](forum.md)
@@ -111,6 +116,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Farm model (multi-hub server, SSO, discovery)** — [farm-model.md](farm-model.md)
 - **Gaming platform (tiers, SDK, sandbox)** — [gaming.md](gaming.md)
 - **Party multiplayer (Tier 2: sessions, hub relay, `game_*` envelopes)** — [gaming.md](gaming.md)
+- **Screen share v2 (WebRTC P2P, hub as signaler, TURN-optional, v1 fallback)** — [screen-share-webrtc.md](screen-share-webrtc.md)
 
 ## How to use this wiki
 

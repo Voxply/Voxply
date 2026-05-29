@@ -4,6 +4,217 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Identity recovery: passphrase-wrapped backup file + social recovery as vouch-not-grant
+
+**Decision**: the two recovery layers above the shipped phrase are (a) a
+client-side **`.voxply-backup`** export — the identity seed sealed with
+Argon2id + AES-256-GCM under a user passphrase, saved to a
+user-chosen location, with a self-describing JSON envelope (`version`,
+KDF params, nonce) — and (b) **recovery contacts**: per-hub,
+community-axis trusted master pubkeys who can sign a scoped attestation
+("this new key is the same human as this old key") toward a
+threshold K. Reaching K only routes a key-rotation request into the hub
+admin's review queue; a **human admin** makes the actual role grant and
+scopes which roles transfer. Owner-role rotation is excluded from the
+social path (needs a pre-designated successor or a second
+owner-equivalent admin). Full design in
+[`identity-recovery.md`](identity-recovery.md).
+
+**Alternatives considered**:
+
+- **Auto-grant at threshold K** (contacts' signatures directly restore
+  roles). Rejected: K colluding or compromised contact keys could
+  silently seize an admin's roles with no human in the loop. Threshold
+  as a *filter for admin attention* keeps the existing approval-queue
+  trust model (the hub admin is already the authority on their own hub
+  per [`threat-model.md`](threat-model.md)) and lets the admin scope the
+  transfer. The cost is recovery isn't fully self-service — accepted.
+- **Recovery contacts as personal-axis state on the home hub list.**
+  Rejected: vouching is a *place's* decision to re-grant *that place's*
+  roles, so the designation belongs on the community hub whose roles are
+  at stake — the [`home-hub.md`](home-hub.md) person-vs-place rule. Each
+  hub stores its own contact set and decides independently; there is no
+  cross-hub propagation (federation has no global source of truth).
+- **Backup auto-synced to the home hub list** (convenience). Rejected for
+  v1: it concentrates the highest-value secret (the passphrase-wrapped
+  seed) on hubs the threat model already flags as
+  observing/withholding surfaces. The backup stays a user-placed file —
+  the same sovereignty call as self-hosting.
+- **A separate encryption key / passphrase-verifier field in the
+  envelope.** Rejected: the GCM tag *is* the integrity-and-passphrase
+  check; a separate verifier leaks a check oracle and the KDF output is
+  the AES key directly. Argon2id params live in the file so cost can rise
+  later without breaking old backups.
+- **Hard passphrase-strength gate on export.** Rejected: forced
+  complexity trains sticky-note passphrases. The strength meter is
+  advisory with a clear warning; Argon2id raises the offline-guessing
+  floor regardless.
+- **Treat backup import and device pairing as one flow.** Rejected — they
+  differ fundamentally: import *moves the master seed* and replaces the
+  device's identity (no revocation, file = phrase compromise), while
+  pairing ([`multi-device.md`](multi-device.md)) mints a *revocable
+  per-device subkey* and never moves the master over the wire. The UI
+  keeps them distinct: pair when you have a working device, import only
+  when you have none.
+
+**Tradeoff**: social recovery deliberately is not fully automatic — a
+human admin is in the loop, and a solo hub owner who loses their key and
+pre-designated no successor cannot recover the irrevocable owner crown
+(only membership and non-owner roles). We accept that sharp edge because
+the alternative (auto-granting owner on K signatures) would make the most
+dangerous role on a hub seizable by a quorum of contact keys. Backup
+import replacing an existing identity is guarded by a fingerprint-compare
+and a double-confirm rather than prevented, matching the existing
+phrase-paste-replaces semantics in [`identity.md`](identity.md).
+
+**What changes on the implementation side**:
+
+- *Client* (`Voxply-desktop`, mirrored web/Android): backup export/import
+  Tauri commands in `desktop/src-tauri/src/lib.rs` (Argon2id + AES-GCM in
+  Rust; seed never enters the webview); export wizard, import + conflict
+  modal, "restore from backup" welcome-screen entry; recovery-contact
+  owner/contact/requester UI and an admin "Recovery requests" tab.
+- *Hub* (Voxply-server): new `hub/src/routes/recovery.rs`
+  (`PUT/GET/DELETE /recovery/contacts`, `POST /recovery/rotation-request`,
+  `GET /recovery/rotation-request/:id`, `POST .../attest`,
+  `GET /admin/recovery/requests`, `POST .../decide`); migrations for
+  `recovery_settings`, `recovery_contacts`,
+  `recovery_rotation_requests`, `recovery_attestations`; admin routes gate
+  on `manage_users`.
+- *Identity crate* (Voxply-server, `identity/src/lib.rs`): the shared
+  bound-bundle signing helper — master-key sign over
+  `(hub_pubkey, old_pubkey, new_pubkey, nonce)` — so client and hub agree
+  on the exact bytes an attestation covers.
+
+**What's deferred**: backup auto-sync to home hubs; cross-hub recovery
+propagation (waits on portable hub-certifications); contact-set rotation
+history; reliable in-app push to contacts (out-of-band request id for
+v1); QR-assisted request hand-off; a full hub line-of-succession model
+beyond a single owner-signed successor pubkey.
+
+## Block / Ignore / DND: personal-axis state, client-side filtering, one server-enforced bit for DMs
+
+**Decision**: the user-level toolset is three independent features
+sharing the home-hub prefs blob (personal-axis state) and one settings
+surface. **Block** (strongest) is global by master pubkey: messages
+hidden client-side behind a collapsible placeholder in shared channels,
+voice muted client-side, mentions-from-blocked suppressed, and DMs
+**server-enforced** at the recipient's home hub. **Ignore** is a softer
+chat-only variant — same client-side message collapse, but no DM block
+and mentions still notify. **Quiet hours / DND** is a read-time
+transform that downgrades every channel's notify mode one step
+(`all`→`mentions`, `mentions`→`silent`, `silent` stays), via a
+sidebar-footer quick-toggle and an optional schedule. Block/ignore/DND
+all live in the encrypted prefs blob; the only thing that leaves it is a
+plaintext **DM-block set** projection on the home hub so it can reject
+inbound DMs. Full design in [`block-mute-ignore.md`](block-mute-ignore.md).
+
+**Alternatives considered**:
+
+- **Per-hub block lists on each community hub.** Rejected: makes the
+  block public to every hub operator, requires N writes that drift, and
+  can't cover a federated DM from someone whose community you don't
+  share. Personal-axis state belongs on the home hub list, not sprayed
+  across community hubs (the two-axis rule).
+- **Block as one feature with sub-toggles** instead of distinct Block
+  and Ignore. Rejected on the same grounds the notifications and lobby
+  designs reject bundling — two clear verbs ("sever" vs "quiet") each map
+  to one mental model; a matrix of toggles forces every user to reason
+  about all of it.
+- **Fully hide blocked messages (absent, not collapsed).** Rejected:
+  breaks reply/thread context and makes others' quotes incomprehensible.
+  A one-line click-to-reveal placeholder keeps the conversation legible
+  while honoring the block.
+- **Pure client-side block with no server enforcement.** Rejected for
+  DMs specifically: a client filter can't stop a DM from being stored on
+  the home hub and pushed to other devices. DM blocking is the one part
+  that must be server-side; everything else stays client convenience.
+- **DND as a fourth notification mode.** Rejected: keeps the matrix at
+  three modes and one knob (the notifications decision's constraint).
+  DND is a global one-step downgrade applied at notify time, not stored
+  per channel.
+- **Tell the hub to stop relaying a blocked user's voice.** Rejected: a
+  community-visible side effect of a private action, and the relay has
+  no per-listener filtering. Client-side gain-to-zero is private and
+  needs no protocol change.
+
+**Tradeoff**: block isn't *purely* private — the recipient's home hub
+holds a plaintext DM-block set (the pubkeys denied DM access) so it can
+enforce. We accept that single-bit leak because it's scoped to the home
+hub that already stores the DM inbox, and it's the minimum needed for
+enforcement the client can't do. The full block list, the ignore list,
+and DND all stay inside the encrypted blob. Block is per-master-pubkey,
+so a determined abuser minting a fresh identity evades it — same
+limitation as every pubkey-keyed control; anti-Sybil is the lobby/PoW
+design's job, not block's.
+
+**What changes on the implementation side**:
+
+- *Storage* (Voxply-server home-hub prefs blob, per
+  [`home-hub.md`](home-hub.md)): `blocks`, `ignores`, `dnd` fields
+  inside the encrypted blob. New plaintext DM-block set with
+  `PUT/GET /identity/dm-blocks` routes.
+- *Hub DM ingestion* (`hub/src/routes/dms.rs` and
+  `hub/src/federation/handlers.rs`, Voxply-server): block-set check
+  before store-and-push; success-shaped response when blocked.
+- *Client* (Voxply-desktop, mirrored web/Android): migrate
+  `blocked_users.json` / `load_blocked_users` / `save_blocked_users` to
+  read the blob when home hubs exist, local file as legacy fallback;
+  context-menu / profile-card / DM-header block+ignore actions;
+  collapsible blocked/ignored-message placeholder; voice local-mute;
+  notification gate updates (block suppresses mentions, ignore doesn't,
+  DND downgrade transform); sidebar-footer DND quick-toggle +
+  Quiet-hours schedule; Settings "Blocked & Ignored" management list.
+
+**What's deferred**: block-by-IP/device, expiring blocks, block-a-whole-
+hub, voice mute of an ignored (non-blocked) user, reporting / shared
+blocklists (hub-certifications space), a "restrict" middle tier, and
+per-device DND overrides.
+
+## Screen share v2: WebRTC P2P with the hub as signaler, TURN optional, v1-relay as the universal floor
+
+**Decision**: migrate the screen-share transport to WebRTC. The hub becomes a pure SDP/ICE signaler (offer/answer/candidate forwarding over the existing chat WS) and carries zero media bytes; the sharer holds one `RTCPeerConnection` per viewer and uploads SRTP directly. TURN relay is **optional per hub** (operator-configured), and the v1 hub-relayed chunk path is **retained as the universal fallback floor**: a (sharer, viewer) pair that can't traverse NAT and has no working TURN degrades to v1 chunk relay for that one viewer. Transport is negotiated per (sharer, viewer) pair via a `screen_share_v2` capability in `/info` plus a runtime `RTCPeerConnection` probe; the sharer stamps `transport: "webrtc" | "chunks"` on `ScreenShareStart`. Full design in [`screen-share-webrtc.md`](screen-share-webrtc.md).
+
+**Alternatives considered**:
+
+- **Require TURN to ship v2** — rejected: forcing every hub operator to run or pay for a TURN server contradicts the run-it-on-a-home-box ethos. Making TURN optional and keeping v1-relay as the floor means v2 ships with no new mandatory infrastructure; TURN only lowers the relay-fallback rate.
+- **SFU from the start** — rejected as premature: an SFU solves the sharer-uplink case (many viewers, one upload) but is a hub-operated media server, far more than the egress problem that triggers v2 requires. Deferred to v3; the signaling is forward-compatible with an SFU as a special peer.
+- **Client-version string as the v1/v2 gate** — rejected: repos version independently and wire-compat is the contract (`packaging.md`). A `/info` capability flag plus runtime WebRTC probing is the federated-correct, reliable gate.
+- **Drop v1 once v2 lands** — rejected: Linux WebKitGTK frequently lacks a compiled-in WebRTC stack (`ENABLE_WEB_RTC` + GStreamer `gst-plugins-bad`, X11-only), and macOS WKWebView effectively can't do embedded peer connections. v1 must remain the floor for those clients.
+
+**Tradeoff**: WebRTC moves egress off the hub (0 vs N×2.6 Mbps) and cuts latency to ~100 ms, at the cost of an entirely new peer-connection lifecycle (ICE/STUN/TURN, per-viewer uploads, renegotiation) and a non-uniform WebView story (Windows/Android Chromium = full support; Linux = fragile; macOS = no). The per-(sharer,viewer) negotiation with automatic v1 fallback absorbs that non-uniformity without a flag day. P2P's own limit — sharer uplink scales with viewer count — is explicitly left to the v3 SFU.
+
+**Multiple sharers**: data model made forward-compatible now (`ActiveShare` keyed by `(channel_id, sharer_pubkey)`), enabling gated behind `max_sharers_per_channel` (default 1). Flipping the default is the entire enabling change; the multi-share viewer UI (tiling) is the deferred cost.
+
+**Supersedes**: the v2 sketch in [`screen-share.md`](screen-share.md) "Transport — v2" and the v2 pointer in the "Screen share v1" entry below. Those described a single `ScreenShareSignal` envelope and an unconditional TURN fallback; this entry is the authoritative v2 design and splits signaling into explicit offer/answer/ice/join/leave variants with the optional-TURN + v1-floor fallback ladder.
+
+## Hub certifications: hub-signs-user attestations, auto-issue on standing, portable PoW credit, no web of trust
+
+**Decision**: anti-spam Layer 2 is **hub certifications** — an issuing hub signs a canonical payload asserting a user (by **master** pubkey) has been a member in good standing since date Y, carrying the highest PoW level the hub verified plus advisory capability hints. The cert reuses the **same Ed25519 signer as badges** ([`server-tags.md`](server-tags.md)) with a `subject_kind: "user"` discriminant — badges certify hubs, certs certify users, one primitive. Certs **auto-issue** on a standing threshold (default 30 days good standing, admin-tunable, admin can also manual-issue or turn auto off). The user's portfolio lives on the **home hub list** ([`home-hub.md`](home-hub.md)) as opaque issuer-signed blobs (personal-axis); the issuer keeps a `cert_issuances` ledger (community-axis). Presentation is **both** push-at-`/auth/verify` and pull from `GET /identity/:master/certs`. A receiving hub gates admission via `cert_mode` + a **trusted-issuer list** and/or a **property rule** (`min_pow_level`, `min_member_since_days`), advertised on `/info`. Revocation is **expiry (always set, default 90d) + re-issue-as-revoked**. Cross-hub portable PoW credit is the headline payoff: a hub trusts a cert's carried `pow_level` instead of recomputing. Full design in [`hub-certifications.md`](hub-certifications.md).
+
+**Alternatives considered**:
+
+- **Store the portfolio client-side only in `identity.json`.** Rejected: it's trapped on one device, lost on wipe, and invisible to other paired devices — exactly the personal-axis problems the home hub list exists to solve. The home hub list is the canonical store; `identity.json` is a cache.
+- **Manual-only issuance.** Rejected as the default: too much admin toil, so most legitimate members never get a cert and the portfolio stays empty. Manual issuance is kept as an admin option (pre-threshold vouch); auto-on-standing is the default that makes the feature actually populate.
+- **PoW-level-triggered issuance.** Rejected: PoW proves CPU burned, a cert proves a hub observed behaviour over time — different signals. PoW level rides *inside* the cert rather than gating issuance; a hub may opt into `cert_min_pow_level` but it isn't the trigger.
+- **A global "trusted hubs" set / web of trust** ("trust ≥ level 15 from any trusted hub network-wide"). Rejected on the same grounds as badge transitivity — it reintroduces global trust reasoning the federated model refuses. Trust stays one hop: a property rule accepts any validly-signed cert; the trusted-issuer list names specific hubs. Composing them gives "PoW ≥ 15 from a hub I named" with no global graph.
+- **Live `/info` issuer check on every auth.** Rejected: a join flood would hammer issuers. The signature is the authority; the pubkey↔URL `/info` check is cached (6h TTL) and only needed for display and trust-list matching.
+- **No expiry + a mandatory revocation registry.** Rejected: a signed blob can't be un-signed, and a global registry is coordination we don't want. Always-set expiry + auto-renew + re-issue-as-revoked-on-pull is the badge/farm-token posture; the polled revoke-check endpoint is deferred.
+- **Certifying device subkeys instead of the master.** Rejected: a cert is about the durable identity and must survive device rotation. Subject is always the master pubkey (legacy single-key identities are their own master/subkey-0, so no re-issue on migration).
+
+**Tradeoff**: portable PoW credit means a bot can burn PoW once and carry a level-N cert to many hubs — but a *good-standing* cert also costs surviving `cert_min_age_days` un-banned on a real hub, the behavioural cost PoW alone can't impose; the two layers compose rather than overlap. Presenting a cert leaks "I'm a good-standing member of hub X" to the target, so the client presents only the subset satisfying the target's advertised requirement, never the whole portfolio. The admission gate adds real admin configuration surface (`cert_mode` + two rule shapes) and a verification path on the auth hot-path, accepted because it's the only cross-hub answer to "trusted somewhere, new everywhere" and because each piece (signer, home-hub store, `/info` advertise) reuses an existing primitive.
+
+**What changes on the implementation side**:
+- *Shared signer* (`hub/src/federation/`): `subject_kind: "user"` arm + `CertPayload` on the badge signer.
+- *Issuing hub DB* (`hub/src/db/migrations.rs`): `cert_issuances`, `cert_revocations` tables; `hub_settings` rows `cert_auto_issue`, `cert_min_age_days`, `cert_validity_days`, `cert_min_pow_level`, `cert_mode`, `cert_trusted_issuers`, `cert_require`.
+- *Home hub DB* (`hub/src/routes/identity.rs`): `user_certs` portfolio table, replicated write-to-all / read-from-any.
+- *Issuing-hub routes*: `GET /certs/me`, `POST /admin/certs/issue`, `POST /admin/certs/revoke`, deferred `GET /certs/revocations`; periodic issuance sweep.
+- *Home-hub routes*: `GET /identity/:master/certs`, `PUT /identity/:master/certs`.
+- *Receiving-hub auth* (`hub/src/auth/{handlers,middleware}.rs`): `/auth/verify` accepts `certifications[]`; `cert_mode` verification can skip lobby / accept carried `pow_level`. `GET /info` (`routes/health.rs`) gains `cert_requirement`.
+- *Client* (`Voxply-desktop`, mirrored web/Android): portfolio cache in `identity.json`; Tauri `fetch_my_cert`, `list_my_certs`, `present_certs_for`; Settings "Reputation" view, Add-Hub requirement hint + auto-attach, admin Hub Settings → "Certifications" tab.
+
+**What's deferred**: web of trust / transitivity; the polled issuer revoke-check endpoint; cross-farm cert relay; negative reputation / shared ban lists; certs as a discovery/ranking signal; capability certs as actual grants (advisory only in v1); per-device cert presentation policy.
+
 ## Gaming Tier 2: chat-WS envelope family, in-memory state + opt-in snapshot, hub-local scope
 
 **Decision**: Tier 2 party multiplayer (≤20 players) piggybacks the existing chat WebSocket with a `game_*` envelope family rather than opening a dedicated socket per session. Session state is in-memory on the hub by default (matches the 10–30 min ephemeral party-game shape) with an opt-in DB snapshot via `voxply:game:snapshot` for longer matches. Alliance/cross-farm scope is deferred to Tier 3. Full design in [`gaming.md`](gaming.md) — Tier 2 section.
