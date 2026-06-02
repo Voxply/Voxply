@@ -25,10 +25,7 @@ items live in the wiki — see
 - **macOS universal binary (arm64 + x86_64)** — blocked by `audiopus_sys v0.1.8` which compiles Opus for the host arch only; current macOS DMG is arm64 (Apple Silicon). Fix requires upgrading the audio stack to a crate that supports fat library compilation.
 - **Missions system** — self-funding via sponsor-attested cosmetic actions; needs operator and anti-fraud design (see monetization.md)
 - **Gaming Tier 3** — MMO + proximity voice; stretch goal
-- **OS-level picture-in-picture for screen share** — second always-on-top Tauri window keeps the viewer alive when the main app is minimized; builds on the "Floating overlay" layout already designed in screen-share.md
-- **Multiple audio output device routing** — assign different speakers/headsets per voice participant or globally; device enumeration already in `voice/src/devices.rs`
-- **Multi-stream overlay** — view N simultaneous sharers in a channel as independent movable overlays; requires lifting the one-sharer-per-channel cap (open question in screen-share.md)
-- **Cross-channel stream subscription** — subscribe to a screen share from channel B while staying in voice in channel A; decouples stream viewing from voice membership; see future-features.md
+- **Per-participant voice volume control** — per-speaker gain in the voice channel UI; requires splitting the receive ring buffer by sender pubkey (protocol change needed)
 
 ## 🧭 Designed, not started
 
