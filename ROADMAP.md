@@ -29,9 +29,11 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-- **Gaming Tier 2 — party multiplayer** — full design in `gaming.md`:
-  session lifecycle, `game_*` WS envelopes, in-memory state + opt-in
-  DB snapshot, hub-local scope for v1. No implementation started.
+- **Gaming Tier 2 client SDK** — server-side sessions, WS relay, host
+  promotion, snapshot, shared KV, and reaper are all shipped. Remaining:
+  client postMessage SDK additions (`voxply:game:ready/send/start/end/
+  sharedKvGet/sharedKvSet/snapshot/setJoinPolicy` + incoming events) and
+  the Activities-button live-session badge. Design in `gaming.md §Tier 2`.
 
 ## ⚠️ Known issues
 

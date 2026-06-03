@@ -756,8 +756,11 @@ game instance with a roster) and a **relay** (the hub passing game
 events between players). Nothing about Tier 1 changes; a Tier 1 game is
 a Tier 2 game that never opens a session.
 
-> Status: designed, not built. Tier 1 is partially shipped; Tier 2 is
-> the next gaming milestone after the Tier 1 admin surface and SDK land.
+> Status: **SHIPPED** (server-side). Session lifecycle, WS relay, host
+> promotion, snapshot durability, shared KV, session reaper, and 7
+> integration tests all landed in `hub/`. Client SDK postMessage
+> additions (voxply:game:* calls) and the Activities-button live-session
+> badge are the remaining client-side work.
 
 ### Decision 1 — multiplayer protocol: piggyback the chat WS with a `game_*` envelope family
 
