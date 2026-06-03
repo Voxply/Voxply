@@ -185,10 +185,15 @@ implementation state.
   description, color accent, thumbnail, fields (inline-aware), image,
   and footer on desktop and web.
 
+- **Token expiry push** — **Shipped**: `hub/src/bots/token_expiry.rs`
+  sweeps every 15 min; sends `token_expiring_soon` 72 h before expiry
+  with a 24-hour re-warn cooldown; sends `bot_removed` + closes WS on
+  expiry. `POST /auth/renew` issues a fresh token (30-day window) and
+  returns `{ token, expires_at }`. Auth middleware enforces `expires_at`
+  at request time. 11 integration tests in `hub/tests/token_expiry_flow.rs`.
+
 **Still deferred:**
 
-- **Token expiry push** — hub should send `token_expiring_soon` 72 h
-  before expiry and support `POST /auth/renew`; not wired.
 - **Voice/screen-share injection**, **bot DMs**, **outgoing webhooks**
   (hub→external URL on events), **bot-launched game modals** —
   deferred, no timeline.
