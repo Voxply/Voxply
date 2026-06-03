@@ -32,9 +32,6 @@ items live in the wiki — see
 - **Gaming Tier 2 — party multiplayer** — full design in `gaming.md`:
   session lifecycle, `game_*` WS envelopes, in-memory state + opt-in
   DB snapshot, hub-local scope for v1. No implementation started.
-- **OS picture-in-picture** — design in `future-features.md`: a second
-  Tauri window (`always_on_top`, no decorations) fed via the existing
-  stream chunk path. No implementation started.
 
 ## ⚠️ Known issues
 
