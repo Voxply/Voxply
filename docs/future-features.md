@@ -1,7 +1,9 @@
 # Future Features
 
-Designed-but-not-built features. Each section is the design we'd start
-from when the time comes. None of this is shipping today.
+Design and implementation status for features beyond the initial launch.
+Each section notes what's shipped, what's partial, and what's still
+deferred. The design rationale is preserved so it stays useful as the
+canonical reference for ongoing implementation.
 
 > See also: [farm-model.md](farm-model.md) for the multi-hub server
 > layer, and [gaming.md](gaming.md) for the game distribution platform.
@@ -22,12 +24,15 @@ instantly. Without friction, a hub can be flooded by fresh keys.
 - Proof stored in the identity file. Hub verifies instantly with one
   hash check. Cannot be faked — pure math.
 
-PoW primitives already exist in `identity/src/pow.rs` (Voxply-server);
-they aren't enforced yet.
+**Status: SHIPPED.** `identity/src/pow.rs` (Voxply-server) implements
+`compute_security_level()` and `verify_security_level()`. The hub reads
+`min_pow_level` from `hub_settings` (default `0` — no PoW required) and
+enforces it in `auth/handlers.rs`. The required level is advertised via
+`GET /info` so clients know what to compute before connecting.
 
 ### Layer 2 — hub certification (reputation)
 
-**Status**: design committed. The canonical doc is
+**Status**: mostly shipped. The canonical doc is
 [hub-certifications.md](hub-certifications.md). Summary:
 
 - Hub signs a statement: "user X has been a member since Y in good
@@ -40,6 +45,18 @@ they aren't enforced yet.
   (cross-hub portable PoW credit).
 - Same Ed25519 signer as badges ([server-tags.md](server-tags.md)),
   `subject_kind: "user"`.
+
+**What's shipped**: `cert_issuances` and `user_certs` tables in the DB;
+`hub_settings` rows (`cert_mode`, `cert_standing_days`, `cert_validity_days`,
+`cert_min_pow_level`, `cert_trusted_issuers`, `cert_require`); five admin
+routes in `hub/src/routes/certs.rs`; auth gate in `auth/handlers.rs`
+verifies cert signatures, expiry, standing, and `cert_require` property
+rules; `GET /info` advertises `cert_requirement`; `IdentityCertificationsSection`
+and `HubCertificationsAdminSection` UI components exist on desktop.
+
+**Still deferred**: automatic cert-issuance sweep job (periodic
+background task that mints certs for qualifying members); `GET
+/certs/revocations` polling endpoint; cross-farm cert relay.
 
 ### Also considered
 
@@ -70,67 +87,101 @@ Beyond today's ban/mute/kick/timeout:
   threshold = can read/post text and listen in voice, but can't
   transmit. Users can "raise hand" to request permission.
 
-**Why deferred**: basic moderation covers the essentials. Channel-level
-controls and voice moderation are the next layer once the basics are
-proven.
-
-> Some of these (`voice_mutes`, talk power) have admin UI scaffolding
-> already; the enforcement is partial. Check
-> `hub/src/routes/moderation.rs` and
-> `hub/src/routes/role_models.rs` (both in Voxply-server) for current state.
+**Status: SHIPPED.** All three controls are fully wired end-to-end:
+`channel_bans`, `voice_mutes`, `channel_voice_mutes`, and
+`raise_hand_requests` tables exist in the DB; `channels.min_talk_power`
+and `roles.talk_power` columns are present. `hub/src/routes/moderation.rs`
+exposes full CRUD for all three (including per-channel voice mute and
+raise-hand). The WS voice-join gate in `ws.rs` enforces hub-wide voice
+mute, per-channel voice mute, and talk-power threshold before admitting
+audio. `ChannelSettingsModal` (desktop) surfaces talk-power config;
+`ChannelBansModal` surfaces channel ban management.
 
 ---
 
 ## Identity recovery — beyond the recovery phrase
 
-The recovery phrase ([identity.md](identity.md)) is shipped. These are
-the next layers, none built:
+The recovery phrase ([identity.md](identity.md)) is shipped. Subsequent
+layers:
 
 1. **Backup / export** — explicit export-import of `identity.json` with
    a passphrase wrapper. The file already exists at
-   `~/.voxply/identity.json`; this is just UX.
+   `~/.voxply/identity.json`; this is just UX. **Not yet built** — no
+   Tauri command or UI for passphrase-protected export/import.
 2. **Device linking** — master keypair authorizes per-device sub-keys.
-   Revoke a lost device from another. Layers cleanly on the recovery
-   phrase: phrase becomes the master seed; existing single-key
-   identities migrate by treating themselves as "device 0."
+   Revoke a lost device from another. **Shipped as part of multi-device
+   pairing** (see that section below); the DB tables, routes, and QR
+   pairing UI are all present.
 3. **Recovery contacts** — designate trusted keypairs that can reclaim
-   your roles or hub ownership if your key is lost. Hub-side, not
-   identity-side.
-
-**Why deferred**: the recovery phrase covers the "I formatted my PC"
-case. Multi-device and social recovery are real needs, but only when
-users actually want them.
+   your roles or hub ownership if your key is lost. **Partially shipped**:
+   `recovery_settings` and `recovery_contacts` tables exist;
+   `hub/src/routes/recovery.rs` has PUT/GET contacts and key-rotation
+   request endpoints; admin approve/deny routes present. No UI yet.
 
 ---
 
 ## Bots and integrations
 
-**Status**: future direction, not built. Tracked as task #148.
+**Status: MOSTLY SHIPPED.** The full design lives in
+[bots.md](bots.md). Both shapes landed: bots-as-users (external bots
+with Ed25519 identity + invite flow) and incoming webhooks. The
+canonical spec is `bots.md`; the summary below reflects current
+implementation state.
 
-**Goal**: first-class bot support — automated identities that can read
-channels, post messages, and react to events.
+**What's shipped:**
 
-The pubkey-based identity is well-suited: a bot is an Ed25519 identity
-with no recovery phrase and a long-lived token. Two likely shapes:
+- **Hub-local bots** — admin creates a bot identity on the hub, gets a
+  bearer token. Routes: `POST/GET/DELETE /admin/bots`, `PUT
+  /admin/bots/:pubkey/webhook`. UI: `HubBotsSection.tsx` (desktop +
+  web).
+- **External bots** — bot author registers by pubkey; admin issues a
+  24-hr invite token; bot signs and accepts. Routes: `POST /bots`,
+  `POST /bots/accept-invite`, `GET /bots`, `DELETE /bots/:pubkey`. Bot
+  self-service: `GET/PUT /bots/me/profile`, `PUT /bots/me/commands`,
+  `PUT /bots/me/subscriptions`. UI: `ExternalBotSection.tsx`.
+- **Incoming webhooks** — admin creates a webhook URL for a channel
+  (secret token shown once, hash stored). `POST
+  /webhooks/:id/:token` accepts `{ content, username?, avatar_url?,
+  embeds? }`, rate-limited to 5 msg/min. Routes: `POST/DELETE/PATCH
+  /admin/webhooks/:id`. UI: `WebhooksSection.tsx`.
+- **Slash command dispatch** — `hub/src/bots/dispatch.rs` parses
+  `/command args`, looks up the bot, signs the invocation, and POSTs to
+  the bot's webhook URL with Ed25519 signature headers. Supports
+  `reply`, `ephemeral`, `defer`, `components`, and `embeds` response
+  shapes.
+- **Event subscriptions & audit log** — `hub/src/bots/events.rs`
+  publishes events to `hub_audit_log` and pushes to subscribed bots via
+  WS. Full event set: `member.*`, `voice.*`, `message.*`, `channel.*`,
+  `hub.*`, `bot.*`. Bots can reconnect and replay from a sequence
+  number.
+- **Bot event polling** — `GET /bot/poll?since=N`, `DELETE
+  /bot/events`, `POST /bot/send` for polling-based bots that don't use
+  WS.
+- **Bot registry in Voxply-discovery** — `GET/POST /api/bots` for
+  public bot listing and self-submission.
+- **Integration tests** — `hub/tests/bots_flow.rs` (343 lines) covers
+  the main flows.
 
-- **Bots-as-users** — bot identities are regular member rows with a
-  `bot` flag and elevated permissions. Posts via the existing
-  `/messages` endpoint. Federates the same way users do. Fits everything
-  we've built.
-- **Outbound webhooks** — hub POSTs to external URLs on events (channel
-  message, voice join, etc.). One-way but trivial to integrate with
-  existing tools.
+**What's still missing / deferred (per bots.md):**
 
-Both shapes are valid; picking which (or whether to support both) is
-the design exercise.
+- **Slash command autocomplete** — client needs to cache the command
+  registry and show it in the composer; backend is ready.
+- **Ephemeral message rendering** — backend marks messages with
+  `visible_to_pubkey`; client doesn't yet filter or style them.
+- **Message component rendering** — buttons/selects are stored in
+  `message_components` table and wire shapes exist; client doesn't
+  render them yet.
+- **Rich embed rendering** — `embeds` column on messages exists; client
+  doesn't render embeds yet.
+- **Token expiry push** — hub should send `token_expiring_soon` 72 h
+  before expiry and support `POST /auth/renew`; not wired.
+- **Voice/screen-share injection**, **bot DMs**, **outgoing webhooks**
+  (hub→external URL on events), **bot-launched game modals** —
+  deferred, no timeline.
 
 **Security**: bots get scoped tokens, not full user permissions. Token
 rotation is owner-pubkey-gated. Per-bot rate limits. See
 [threat-model.md](threat-model.md).
-
-**How to apply now**: when suggesting features that touch identity,
-permissions, or messaging APIs, keep the bot model in mind so we don't
-paint ourselves into a corner.
 
 ---
 
@@ -149,10 +200,11 @@ second device replaces that device's identity with the first device's,
 which works as a "I formatted my PC" recovery story but is awkward
 for "I want both devices online at the same time."
 
-**Status**: design pending. UX direction agreed (QR-code pairing flow,
-same model as the well-known messaging apps). Underlying protocol not
-yet picked — the two foundational choices below are the next thing to
-decide before we write any pairing code.
+**Status: MOSTLY SHIPPED.** The canonical docs are
+[multi-device.md](multi-device.md) and [home-hub.md](home-hub.md).
+The master+subkey model was chosen and implemented. The pre-decision
+exploration below is kept for context; the design questions it raises
+are resolved.
 
 ### Identity model — pick one
 
@@ -186,45 +238,30 @@ users, friends, voice settings. Multi-device means these need to live
 Option 1 is the v0 path. Option 2 is the right destination. Option 3 is
 over-engineering. Option 4 is the wrong direction.
 
-### Recommended path forward
+### What's shipped
 
-1. Write a real design doc (likely `docs/multi-device.md` when it
-   grows past this section) that picks the identity model + the sync
-   model + sketches the QR pairing protocol message-by-message.
-2. Decide together; the call here matters because it's hard to undo.
-3. Build to that design.
+- **DB**: `subkey_certs`, `subkey_revocations`, `pairing_offers`,
+  `home_hub_designations`, `prefs_blobs` tables; `users.master_pubkey`
+  column.
+- **Identity crate**: `MasterIdentity`, `DeviceSubkey`, `SubkeyCert`,
+  `RevocationEntry`, `HomeHubList` types; derivation in `master.rs` /
+  `subkey.rs`.
+- **Routes**: `hub/src/routes/pairing.rs` (offer, claim, complete);
+  `hub/src/routes/identity.rs` (designations, devices, revocations,
+  prefs blobs GET/PUT).
+- **Auth enforcement**: middleware checks `subkey_revocations`, returns
+  401 for revoked subkeys.
+- **Desktop UI**: `PairingSection.tsx` (QR offer + claim flow),
+  `DeviceListSection.tsx` (paired devices + revoke button).
 
-**Don't start coding before the doc.** The architectural choice is
-load-bearing — the "right" answer is multi-month and changes hub
-protocol; the "fast" answer is ~1-2 weeks but needs to be replaced
-when revocation matters. Both are real, neither is obviously correct.
+### What's still missing
 
-### What's already in place that helps
-
-- The recovery phrase already deterministically yields a keypair. If
-  we go master+subkey, the same phrase becomes the seed and existing
-  identities migrate cleanly.
-- `localStorage.voxply.recoveryAcknowledged` flag from the onboarding
-  block tracks whether the user has backed up their phrase — useful
-  precondition for "you can pair another device."
-- Per-device storage already isolates hub list, prefs, blocked users,
-  voice settings — these are the things that'd need to sync.
-
-### What's already shipped toward this
-
-- `subkey_revocations` and `subkey_certs` tables in the DB schema.
-- `GET/POST /identity/revocations/{master}` and
-  `GET/POST /identity/devices/{master}` endpoints in `identity.rs`.
-- QR pairing state machine (`pairing.rs`): offer, claim, complete, poll.
-- **Auth enforcement**: HTTP middleware and WS handshake now check
-  `subkey_revocations` and return 401 for revoked keys. The table is
-  empty in the single-key model today, so behaviour is unchanged — but
-  revocations will be honoured the moment multi-device keys are issued.
-
-### What's not done
-
-QR code generation UI, device list screen, subkey issuance on pairing
-completion, per-hub revocation propagation, encrypted prefs blob sync.
+- **Identity export/import with passphrase** — no Tauri command or UI
+  for exporting `identity.json` with a passphrase wrapper.
+- **Per-hub revocation propagation** — revocation is local to each hub;
+  a revoked subkey on hub A is not automatically known to hub B.
+- **Android pairing UI** — QR flow exists on desktop/web; Android
+  client does not yet have it.
 
 ---
 
@@ -284,28 +321,19 @@ section. The UI should show a helper like:
 
 Enforcement is server-side so API clients can't bypass it.
 
-### Data model
+### Data model and implementation status
 
-Today's `channels` table is already self-referential — it has
-`parent_id TEXT REFERENCES channels(id)` and `is_category INTEGER` —
-the schema **already supports nesting**. What's missing is the UI,
-route validation, and the hub setting:
+**Status: SHIPPED.** The `channels` table has `parent_id TEXT
+REFERENCES channels(id)` and `is_category INTEGER`. Route validation
+in `hub/src/routes/channels.rs` enforces depth (`node_depth()`,
+`read_max_depth()`) and cycle detection (`is_ancestor()`) on both
+create and move. `max_channel_depth` is seeded as `'0'` in
+`hub_settings`. `ChannelSidebar.tsx` uses a recursive `TreeNode`
+structure with depth tracking.
 
-- The drag-drop UI in the desktop client treats categories as one level
-  and channels as their children, with no recursion.
-- There's no UI to make a category a child of another category, even
-  though the data model accepts it.
-- `max_channel_depth` needs a row in the hub settings table and a field
-  in the admin panel.
-
-Work breakdown:
-- Allow drag-drop that nests a category under another category.
-- Allow drops that nest a channel under any category at any depth.
-- Reject drops that would create a cycle (a node into its own descendant).
-- Reject drops / creates that violate `max_channel_depth` or the
-  category-at-max-depth invariant.
-
-No schema migration needed for channels. One new settings row.
+**Still missing**: admin panel UI to set `max_channel_depth` (the
+setting exists in the DB but there's no field in Hub Settings to
+change it).
 
 ### Open implementation questions
 
@@ -334,7 +362,7 @@ No schema migration needed for channels. One new settings row.
 
 ## Forum channel type
 
-**Status**: future design. No design committed yet.
+**Status: SHIPPED.** The full design is in [forum.md](forum.md).
 
 **Goal**: a channel variant where the content is an indexed list of
 *posts* (each with a title) rather than a continuous message stream.
@@ -356,53 +384,56 @@ Forum channels are leaves in the channel tree (same as regular
 channels) and live at the same depth positions. They carry a new
 `channel_type` discriminant: `"text"` (default today) vs `"forum"`.
 
-### Data model sketch
+### Data model
 
-New `posts` table:
-```
-posts(id, channel_id, author_pubkey, title TEXT, body TEXT,
-      created_at, edited_at, is_pinned)
-```
+All shipped: `posts` table (id, channel_id, author_pubkey, title,
+body, created_at, edited_at, is_pinned, is_locked, reply_count,
+last_activity_at, deleted_at); `post_replies` (id, post_id,
+author_pubkey, body, reply_to_id, soft-delete); `posts_fts` FTS5
+virtual table with insert/update/delete triggers; `channel_type TEXT
+DEFAULT 'text'` on channels.
 
-New `post_replies` table (or reuse `messages` with a `post_id` FK):
-```
-post_replies(id, post_id, author_pubkey, body TEXT,
-             created_at, edited_at, reply_to_id)
-```
+### Routes and permissions
 
-The `channels` table gains a `channel_type TEXT DEFAULT 'text'`
-column. No other existing tables change.
+All 12 endpoints in `hub/src/routes/posts.rs` are shipped: list,
+create, get, edit, soft-delete for posts and replies; pin/lock
+(gated to `manage_posts`); FTS search via `GET
+/channels/:cid/posts/search?q=`. Two new permissions (`create_posts`,
+`manage_posts`) seeded in migrations.
+
+### UI
+
+`ForumPostList.tsx`, `ForumPostDetail.tsx`, `ForumComposer.tsx` exist
+on desktop and web. `CreateChannelModal` includes the `forum` type
+option. WS events (`post_created`, `post_updated`, `reply_created`,
+etc.) feed through the existing notification system.
 
 ### Moderation
 
-Forum posts follow the same moderation model as messages — hub
-moderators can delete posts and replies, channel bans apply to posts
-too. The existing moderation routes extend naturally.
+Soft-delete with `deleted_at`; moderators see authorship on deleted
+posts. Channel bans apply. Existing moderation routes extend naturally.
 
-### Federation
+### Still deferred
 
-Posts and replies federate the same way messages do (alliance shared
-channels). The federation envelope gets a `post` event type alongside
-`message`. Out-of-scope for the first iteration — federated forums
-can be added once the local model is stable.
-
-### Why deferred
-
-Regular channels cover the "live conversation" shape well. Forums
-need a distinct UI (post list view, post detail view, reply thread)
-and new DB tables. Worth doing when communities ask for it, but not
-blocking anything today.
+Per-post read cursors (v1 uses channel-level unread tracking only);
+federation of posts across alliances; reactions on posts; attachments
+on posts.
 
 ---
 
 ## Multi-stream overlay, OS picture-in-picture, and decoupled stream viewing
 
-Three related screen-share evolutions that build on each other. None is
-built; all are designed to the level needed to start implementation.
+Three related screen-share evolutions. Multi-stream overlay and
+cross-channel subscriptions are shipped; OS PiP is not yet built.
 
 ### Multi-stream overlay within a channel
 
-**Problem**: v1 enforces one sharer per channel. Co-op gaming and
+**Status: SHIPPED.** The one-sharer cap has been removed. `state.rs`
+holds `ActiveShare` as a `HashMap<stream_id, ScreenStreamMeta>` per
+channel with a `cross_channel_subscribers` set. Multiple concurrent
+sharers are supported.
+
+**Problem (original)**: v1 enforces one sharer per channel. Co-op gaming and
 pair-programming sessions want all participants' screens visible
 simultaneously without switching focus.
 
@@ -435,7 +466,14 @@ keying across multiple sharers.
 
 ### Cross-channel stream subscription (decoupled from voice)
 
-**Problem**: today, viewing a screen share in channel X requires being a
+**Status: SHIPPED.** `StreamSubscribe` / `StreamUnsubscribe` WS
+message variants exist in `chat_models.rs`; the subscription handler
+in `ws.rs` adds the viewer to `cross_channel_subscribers` and replays
+the init chunk. `HubStreamsPanel.tsx` (desktop) is the streams
+discovery panel; `useHubStreams.ts` manages discovery and subscription
+state.
+
+**Problem (original)**: today, viewing a screen share in channel X requires being a
 member of channel X and having it selected. This forces a choice: leave
 your current voice context or miss the stream.
 
@@ -503,16 +541,12 @@ current channel or voice state.
 | Leave voice A to watch channel B's stream | Stay in voice A, subscribe to B's stream |
 | Streams are "richer voice" | Streams are first-class hub objects |
 
-**Why deferred**: voice and stream viewing are intentionally coupled today
-(shares ride the chat WS, viewers are channel subscribers). Decoupling
-them is a meaningful authorization and UX change. The foundation —
-`ActiveShare` map, fan-out, per-channel permission check, init-chunk cache
-— is already in place; the extension is the authorization path and the
-streams discovery UI.
-
 ---
 
 ### OS-level picture-in-picture
+
+**Status: NOT YET BUILT.** No `always_on_top` Tauri window exists in
+`src-tauri/`. This is the remaining item in this section.
 
 **Problem**: the "Floating overlay" layout (designed in
 [screen-share.md](screen-share.md)) pins the viewer inside the app window.
@@ -554,10 +588,23 @@ compact grid of N streams depending on which model is active.
 
 ## Server tags — federated portable badges
 
-**Status**: design committed. The canonical doc is
+**Status: MOSTLY SHIPPED.** The canonical doc is
 [server-tags.md](server-tags.md). It splits the feature into self-tags
 (free-form discovery keywords, hub-authoritative via `/info`) and
 badges (portable Ed25519-signed attestations one hub grants another,
 push-to-subject / pull-by-anyone). The badge signer is the same
-primitive this file's "hub certification" section needs for certifying
-users — server-tags.md establishes it for the hub-subject case.
+primitive the hub certification section uses for certifying users.
+
+**What's shipped**: `hub_tags` and `hub_nsfw` hub settings; `badge_offers`,
+`hub_badges`, and `issued_badges` DB tables; `hub/src/routes/tags.rs`
+(GET/PATCH `/admin/settings/tags`); `hub/src/routes/badges.rs` (full
+CRUD: pending offers, accept, decline, remove, issue, list issued);
+`GET /info` includes `self_tags`, `nsfw`, and `badges` fields;
+Ed25519 badge signature verification on accept; outbound issuance POSTs
+to recipient hub's `/federation/badge-offer`. `HubBadgesSection.tsx`
+(desktop) and `ServerTagsSection.tsx` + `hubAdmin.ts` (web) are the
+UI and API layers.
+
+**Still deferred**: issuer revoke-check endpoint
+(`/federation/badge-revocations`); user-configurable trust roots (v1
+uses existing hub relationships); badge transitivity.
