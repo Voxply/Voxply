@@ -29,13 +29,14 @@ items live in the wiki — see
   background effects (MediaPipe); camera toggle in voice bar; VideoGrid
   component. SFU hook designed-in for large events; mesh ships first.
   Design in [`video-voice.md`](docs/video-voice.md).
-- **Voice advanced settings** — Standard / Music / Custom audio quality
-  profiles; exposes Opus bitrate, application mode, noise suppression,
-  VAD, stereo, frame size, complexity. Design in
-  [`voice-advanced-settings.md`](docs/voice-advanced-settings.md).
 
 ## 🚀 Recently shipped
 
+- **Voice advanced settings** — Standard / Music / Custom audio quality
+  profiles. `EffectiveVoiceConfig` resolved at pipeline start; Denoiser
+  bypass; VAD gate per-profile; custom Opus bitrate, app mode, channels,
+  frame size, complexity. Settings persisted to `voice.json`.
+  Design in [`voice-advanced-settings.md`](docs/voice-advanced-settings.md).
 - **Windows Authenticode signing** — CI signing wired in `release.yml`;
   activates once `WINDOWS_CERT_THUMBPRINT` secret is set (cert
   procurement via SignPath.io OSS tier still pending).
