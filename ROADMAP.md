@@ -30,56 +30,36 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-- **Hub server operations** — backup & restore, data retention policy,
-  Prometheus `/metrics` endpoint, hub key rotation ceremony. Design in
-  [`hub-operations.md`](docs/hub-operations.md).
-- **Hub admin tooling** — web admin panel at `{hub-url}/admin`, admin CLI
-  (`voxply-hub admin ...`), farm console (multi-hub management). Design in
-  [`hub-admin-panel.md`](docs/hub-admin-panel.md).
-- **Discovery enhancements (remaining)** — farm browsing (separate catalog + `/farms` page),
-  anonymous aggregate analytics (catalog-only counts, registered vs. active hubs).
-  Hub uptime tracking, global search, and template catalog are shipped.
-  Design in [`discovery-v2.md`](docs/discovery-v2.md).
-- **Hub first-run bootstrap** — hub applies a template/token on empty-DB
-  first launch (`VOXPLY_BOOTSTRAP_TOKEN`, `VOXPLY_TEMPLATE_URL`). Discovery
-  side (wizard + token endpoints) is shipped; hub-side redeem logic in
-  `hub/src/db/migrations.rs` still to build.
-  Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
-- **Hub moderation enhancements** — federated ban lists (signed, opt-in
-  per source), auto-moderation webhook (fail-open, circuit-breaker), and
-  content reporting (hub-local admin queue). Design in
-  [`moderation-enhancements.md`](docs/moderation-enhancements.md).
-- **Client quality-of-life (remaining)** — thread collapse/expand +
-  jump-to-thread. Design in [`client-qol.md`](docs/client-qol.md).
-  Global message search, message drafts, custom emojis, events/calendar,
-  polls, and notification grouping are shipped.
+_(nothing — all designed features are now shipped)_
 
 ## 🚀 Recently shipped
 
-- **Hub uptime tracking** — server-side `/info` probing via `GET /api/internal/ping-hubs`
-  (CRON\_SECRET-guarded), `hub_pings` table with 30-day prune, 7-day uptime percentage
-  included in hub listings. Design in [`discovery-v2.md`](docs/discovery-v2.md).
-- **Global search** — `GET /api/search?q=` fans out across hubs, bots, and templates
-  (max 5 per type), grouped dropdown on the landing page.
-  Design in [`discovery-v2.md`](docs/discovery-v2.md).
-- **Hub creation wizard** — 4-step wizard at `/new`: pick template, customise
-  (name/description), choose deployment (Docker/Binary/Managed Farm), deploy
-  instructions. `POST /api/wizard/generate` mints a 24h single-use bootstrap
-  token; `POST /api/bootstrap/redeem` redeems it. Template catalog and farm
-  listings wired in. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
-- **Hub config template catalog** — signed self-submission via `POST /api/templates`,
-  `GET /api/templates`, `GET/DELETE /api/templates/:id`, and `/templates` browse page
-  with tag + text search. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
-
-- **Events / calendar** — `hub_events` + `event_rsvps` tables, REST
-  routes (create/list/get/update/delete/rsvp), event card message posted
-  to channel on create, `EventCard`, `EventsPanel`, and Tauri commands
-  `list_events`, `rsvp_event`, `create_event`. Design in
-  [`client-qol.md`](docs/client-qol.md).
-- **Native polls** — `polls` + `poll_votes` tables, REST routes
-  (create/get/vote/delete), live tally broadcast via `poll_vote_updated`
-  WS message, `PollCard` component with animated bars, Tauri command
-  `vote_poll`. Design in [`client-qol.md`](docs/client-qol.md).
+- **Hub server operations** — backup/restore CLI, data retention sweep,
+  Prometheus `/metrics`, hub key rotation (`voxply-hub rotate-key` +
+  `GET /key-rotation`). Design in [`hub-operations.md`](docs/hub-operations.md).
+- **Hub admin tooling** — web admin panel at `/admin/panel` (token-gated,
+  embedded HTML), `voxply-hub admin` CLI subcommands, farm heartbeat +
+  fleet console. Design in [`hub-admin-panel.md`](docs/hub-admin-panel.md).
+- **Hub moderation enhancements** — federated ban lists (`GET /federation/banlist`,
+  6h background sync), auto-mod webhook (500ms, fail-open, HMAC-SHA256),
+  content reporting (`POST /messages/:id/report`, admin review queue).
+  Design in [`moderation-enhancements.md`](docs/moderation-enhancements.md).
+- **Discovery: full suite** — hub uptime tracking, global search, farm
+  browsing catalog, anonymous aggregate analytics, hub config template
+  catalog, hub creation wizard (`/new`). Design in
+  [`discovery-v2.md`](docs/discovery-v2.md) and
+  [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
+- **Hub first-run bootstrap** — `VOXPLY_TEMPLATE_URL` / `VOXPLY_BOOTSTRAP_TOKEN`
+  on empty-DB first launch; applies channels, roles, hub name from template.
+  Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
+- **Client quality-of-life** — global message search (FTS5), message drafts,
+  custom emojis per hub, events/calendar (`EventCard`, `EventsPanel`),
+  native polls (`PollCard`, live bars), thread collapse/expand, notification
+  grouping (3s per-hub debounce). Design in [`client-qol.md`](docs/client-qol.md).
+- **Events / calendar** — `hub_events` + `event_rsvps` tables, full REST,
+  `EventCard`, `EventsPanel`, Tauri commands. Design in [`client-qol.md`](docs/client-qol.md).
+- **Native polls** — `polls` + `poll_votes`, live broadcast, `PollCard`,
+  Tauri command. Design in [`client-qol.md`](docs/client-qol.md).
 - **Video in voice channels** — WebRTC mesh, active-speaker management
   (top-3, 3s linger), `VideoGrid` (equal grid ≤4, active-speaker+thumbnails
   5+, self-view overlay), `BackgroundProcessor` (MediaPipe none/blur/image),
