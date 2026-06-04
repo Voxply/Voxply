@@ -28,16 +28,13 @@ items live in the wiki — see
   Proximity voice is already a general platform primitive; only the
   persistent-world layer is undesigned.
 
-## 🧭 Designed, not started
-
-- **Whisper** — TeamSpeak-style targeted voice to users/channels/roles
-  across the hub (incl. raid-commander multi-channel callouts).
-  Hub-routed for all sizes, `packet_type` byte in the UDP header, live
-  target re-resolution, whisper-list presets in the prefs blob. Design in
-  [`whisper.md`](docs/whisper.md).
-
 ## 🚀 Recently shipped
 
+- **Whisper UI** — `useWhisper` hook with inbound event tracking and
+  list persistence. `WhisperPanel` in the voice bar with User/Channel/Saved
+  Lists tabs, target checkboxes, one-click activate, save-as-list form.
+  Inbound whisper badge on participant rows in the channel sidebar.
+  Design in [`whisper.md`](docs/whisper.md).
 - **Hub server operations** — backup/restore CLI, data retention sweep,
   Prometheus `/metrics`, hub key rotation (`voxply-hub rotate-key` +
   `GET /key-rotation`). Design in [`hub-operations.md`](docs/hub-operations.md).
