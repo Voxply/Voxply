@@ -14,15 +14,13 @@ only remaining work is polish and responding to user feedback.
 
 ### Blockers (must fix before any public release)
 
-- [ ] **Windows code-signing** — procure EV cert via SignPath.io OSS tier;
-  wire `WINDOWS_CERT_THUMBPRINT` secret into `release.yml` CI. Without this,
-  every Windows user hits a SmartScreen "Windows protected your PC" wall.
-  See [`code-signing.md`](docs/code-signing.md).
+- [ ] **Windows code-signing** — CI wired and docs written; cert procurement
+  pending (SignPath.io OSS application). Without cert, users still see SmartScreen
+  "Windows protected your PC" wall. See [`code-signing.md`](docs/code-signing.md).
 
-- [ ] **Fix server panics in games.rs** — replace ~10 bare `.unwrap()` calls
-  on `Mutex::lock()` and `serde_json::to_string()` (lines 114, 248, 317, 394,
-  404, 506, 569, 594, 602, 707 in `hub/hub/src/routes/games.rs`).
-  A poisoned mutex or bad serialization crashes the whole hub process.
+- [x] **Fix server panics in games.rs** — replaced ~10 bare `.unwrap()` calls
+  on `Mutex::lock()` and `serde_json::to_string()`.
+  A poisoned mutex or bad serialization no longer crashes the hub process.
 
 - [ ] **Deploy the demo hub** — flip `DEMO_HUB_URL` constant so "Try a demo
   hub" works. New users downloading the desktop app currently have no quick
@@ -30,50 +28,41 @@ only remaining work is polish and responding to user feedback.
 
 ### Server
 
-- [ ] **Health-check endpoint** — `GET /health` returning version, uptime, and
-  DB status. Required for any ops monitoring and load balancer probes.
+- [x] **Health-check endpoint** — `GET /health` returning version, uptime, and
+  DB status. Now live for ops monitoring and load balancer probes.
 
-- [ ] **Rate-limit auth endpoints** — brute-force protection on
-  `POST /auth/login` and `/auth/challenge` before public exposure.
+- [x] **Rate-limit auth endpoints** — brute-force protection on
+  `POST /auth/login` and `/auth/challenge` live.
 
-- [ ] **Document game permissions gap** — `set_game_permissions` is currently
-  a no-op (hub has no backing route). Either implement capability grants for
-  games or add a clear notice in the admin UI so operators know it has no
-  effect yet.
+- [x] **Document game permissions gap** — notice added to admin UI; operators
+  now know `set_game_permissions` has no effect yet.
 
 ### Client
 
-- [ ] **Hub join error messages** — "Join hub by URL" shows raw error strings
-  on failure (unreachable server, wrong URL, auth error). Replace with
+- [x] **Hub join error messages** — replaced raw error strings with
   user-readable messages.
 
-- [ ] **First-run experience** — new users land with no guidance: create
-  identity → join or create a hub → basic tooltips/welcome flow.
+- [x] **First-run experience** — WelcomeScreen component guides new users
+  through identity creation and hub joining.
 
-- [ ] **Discovery dead-end** — hubs can set tags (`set_discovery_tags`) but
-  there is no public hub directory yet, so tagging has no effect from a user's
-  perspective. Either hide discovery settings until the index exists, or show
-  an explicit "coming soon" note in the admin panel.
+- [x] **Discovery dead-end** — notice added so hubs know tagging is live but
+  global directory is coming soon.
 
 ### Discovery
 
-- [ ] **Public hub directory (minimal)** — even a simple static listing of
-  opt-in hubs would let self-hosters be found. Full dynamic suite
-  (uptime tracking, global search, farm catalog) is Wishlist — but some
-  form of directory is needed for self-hosting to have network value.
+- [x] **Public hub directory (minimal)** — `GET /federation/listing` endpoint +
+  HubBrowser client UI + listing toggle in admin panel live.
 
 ### Documentation
 
-- [ ] **User-facing README / getting-started guide** — what is Voxply,
-  download link, how to join a hub, key concepts (identity, certifications,
-  badges). Currently `docs/` is architecture reference only.
+- [x] **User-facing getting-started guide** — `docs/getting-started.md` live
+  with what is Voxply, download link, hub joining, key concepts.
 
-- [ ] **Hub operator guide** — env vars, first-run bootstrap, backup/restore,
-  upgrade path, basic hardening checklist.
+- [x] **Hub operator guide** — `docs/hub-operator-guide.md` live with env vars,
+  bootstrap, backup/restore, upgrade path, hardening.
 
-- [ ] **Games SDK reference** — postMessage API surface, event types,
-  shared-KV, voice zones. Needed for third-party game developers to build on
-  the platform.
+- [x] **Games SDK reference** — `docs/games-sdk.md` live with postMessage API,
+  event types, shared-KV, voice zones for third-party developers.
 
 ## 🚧 Blocked
 
@@ -94,6 +83,11 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
+- **Pre-launch hardening** — server panic fixes (games.rs), `GET /health`, auth
+  rate limiting, `GET /federation/listing` hub directory + HubBrowser client UI +
+  listing toggle in admin, WelcomeScreen first-run experience, friendlier hub-join
+  errors, discovery dead-end notice, game permissions notice, Windows signing CI
+  wired, three new docs (getting-started, hub-operator-guide, games-sdk).
 - **Cert/badge, game management, discovery Tauri commands** — all remaining
   missing commands wired: `get_cert_settings`, `list_issued_certs`, `save_cert_settings`,
   `issue_cert`, `revoke_cert`, `fetch_my_certs`, `list_badges`, `list_pending_badges`,

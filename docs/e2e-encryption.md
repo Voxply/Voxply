@@ -159,29 +159,211 @@ ciphertext makes sense — it can't; only the recipient can.
 
 ---
 
-## Group DMs — deferred to v2
+## Group DMs — v2: sender-key symmetric ratchet
 
-v1 group DMs (`conv_type = 'group'`, ≥3 members) stay **plaintext**. The
-mixed-conversation UI (§"Client-side changes") covers the visual signal.
+Group DMs (`conv_type = 'group'`, ≥3 members) use a **sender-key** scheme
+modelled on Signal's group messaging. Each sender holds one symmetric
+ratchet chain per `(conv_id, sender_pubkey)`; the chain key is wrapped
+once per group member under their published DH key and stored on the hub.
 
-**Why deferred**: pairwise static ECDH for N members means N(N−1)/2 key
-agreements and re-encrypting every message N−1 times. Plus membership
-churn (add/remove) without a sender-key scheme means key reuse across
-membership generations — bad.
+**Why not pairwise ECDH**: N(N−1)/2 key agreements and re-encrypting
+every message N−1 times. Sender-key costs one key distribution per send
+rotation, and each message is encrypted exactly once regardless of group
+size.
 
-**v2 sketch** (sender-key, Signal-style):
+---
 
-| Element | Shape |
+### Sender state
+
+Each sender tracks `(chain_key: [u8; 32], iteration: u32, version: u32)`
+per `(conv_id, sender_pubkey)` in a local file
+`~/.voxply/group_sender_keys.json`:
+
+```json
+{
+  "my_keys": {
+    "<conv_id>": { "version": 1, "chain_key_hex": "...", "iteration": 5 }
+  },
+  "peer_keys": {
+    "<conv_id>": {
+      "<sender_pubkey>": { "version": 1, "chain_key_hex": "...", "iteration": 3 }
+    }
+  }
+}
+```
+
+`version` increments on every key rotation. `iteration` counts messages
+sent with the current `chain_key` generation.
+
+---
+
+### Per-message ratchet
+
+Before encrypting message N:
+
+```
+msg_key[N]        = HKDF-SHA256(chain_key, salt=N.to_be_bytes(), info="voxply/group-msg/v1")
+chain_key[N+1]    = HKDF-SHA256(chain_key, salt=N.to_be_bytes(), info="voxply/group-chain/v1")
+nonce[N]          = N.to_be_bytes() zero-padded to 12 bytes
+ciphertext[N]     = AES-256-GCM(msg_key[N], nonce[N], plaintext_json)
+```
+
+Same crate (`aes-gcm` + `hkdf` + `sha2`) as 1:1 DMs — no new dependencies.
+
+**Forward secrecy**: a recipient who receives the chain key at iteration K
+can decrypt messages K, K+1, K+2, … but not messages 0…K−1. A new member
+added later receives the chain key at the current iteration and cannot
+read prior messages.
+
+---
+
+### Key distribution (wrapping)
+
+When sender Alice distributes her chain key to recipient Bob:
+
+```
+shared   = X25519(alice_dh_priv, bob_dh_pub)           // same as 1:1 ECDH
+wrap_key = HKDF-SHA256(shared, salt=conv_id, info="voxply/group-key-dist/v1")
+nonce    = random(12)
+wrapped  = AES-256-GCM(wrap_key, nonce, chain_key[32] || iteration[4 BE])
+```
+
+The 52-byte payload (32 key + 4 iteration + 16 GCM tag) is hex-encoded
+and stored in `group_sender_key_distributions` on the hub.
+
+---
+
+### Key rotation
+
+| Event | Action |
 |---|---|
-| Sender key | One ChaCha20-Poly1305 symmetric key per `(group, sender)` pair |
-| Distribution | Sender encrypts the sender-key once **per recipient** under their published DH key; pushes those wrapped blobs to the hub |
-| Use | Sender encrypts each message with their sender key + a per-message counter nonce; recipients decrypt with the wrapped key they received |
-| Membership change | Sender rotates their sender key and re-distributes to the new membership set |
-| Forward secrecy | Per-sender symmetric ratchet on each message |
+| First send in group | Generate a fresh `chain_key`; `version = 1`; wrap for all members; push to hub |
+| Member removed | Each remaining sender MUST rotate (new `chain_key`, `version += 1`) before the next message; re-distribute to new membership set |
+| Member added | Existing senders wrap their current chain key for the new member at the current iteration and push the blob |
 
-Not building this in v1. A code-level marker in the encrypt path
-(`if conv_type == "group" return plaintext`) and a clear note in the
-design doc is the bookkeeping.
+In v2 (current) group conversations have static membership — no add/remove
+routes exist yet. The rotation mechanism is designed in but not triggered.
+When member management lands, the hub will emit a `DmMemberChanged` WS
+event; the client handles it by calling `rotate_group_sender_key`.
+
+---
+
+### Canonical signing bytes
+
+**Group message envelope** (Ed25519 over):
+
+```
+"voxply/group-dm-ciphertext/v1\0"
+|| len_prefixed(conv_id)
+|| len_prefixed(sender_key_version as decimal string)
+|| len_prefixed(iteration as decimal string)
+|| len_prefixed(ciphertext_hex)
+|| len_prefixed(nonce_hex)
+```
+
+**Key distribution** (Ed25519 over):
+
+```
+"voxply/group-key-dist/v1\0"
+|| len_prefixed(conv_id)
+|| len_prefixed(sender_key_version as decimal string)
+|| for each recipient sorted by recipient_pubkey:
+     len_prefixed(recipient_pubkey)
+     len_prefixed(wrapped_key_hex)
+```
+
+---
+
+### Wire types
+
+```
+GroupEncryptedEnvelope {
+    sender_pubkey, conv_id,
+    sender_key_version: u32, iteration: u32,
+    ciphertext_hex, nonce_hex, signature_hex
+}
+
+SenderKeyRecipientBlob {
+    recipient_pubkey,
+    wrapped_key_hex,   // AES-GCM(ECDH wrap_key, chain_key || iteration_be)
+    wrap_nonce_hex,
+    iteration: u32
+}
+
+PushSenderKeyRequest {
+    sender_key_version: u32,
+    recipients: Vec<SenderKeyRecipientBlob>,
+    signature_hex      // Ed25519 over key-distribution canonical bytes
+}
+
+GroupSenderKeyEntry {   // returned from GET /conversations/:id/sender-keys
+    sender_pubkey, sender_key_version: u32, iteration: u32,
+    wrapped_key_hex, wrap_nonce_hex, created_at
+}
+```
+
+---
+
+### Hub-side changes
+
+| Change | File |
+|---|---|
+| New `group_sender_key_distributions` table | `hub/src/db/migrations.rs` |
+| `PUT /conversations/:id/sender-keys` — validate sig, upsert blobs | new handler in `hub/src/routes/dms.rs` |
+| `GET /conversations/:id/sender-keys` — return my received blobs | new handler in `hub/src/routes/dms.rs` |
+| `SendDmRequest` accepts `group_encrypted_envelope` | `hub/src/routes/dm_models.rs` |
+| `send_dm` validates group envelope signature, stores under `is_group_encrypted=1` | `hub/src/routes/dms.rs` |
+| `FederatedDmRequest` carries `group_encrypted_envelope` | `hub/src/routes/dm_models.rs` |
+| `dm_messages` gains `is_group_encrypted INTEGER NOT NULL DEFAULT 0` | `hub/src/db/migrations.rs` |
+
+Hub schema for the new table:
+
+```sql
+CREATE TABLE IF NOT EXISTS group_sender_key_distributions (
+    id                 TEXT PRIMARY KEY,
+    conv_id            TEXT NOT NULL,
+    sender_pubkey      TEXT NOT NULL,
+    recipient_pubkey   TEXT NOT NULL,
+    sender_key_version INTEGER NOT NULL,
+    iteration          INTEGER NOT NULL,
+    wrapped_key_hex    TEXT NOT NULL,
+    wrap_nonce_hex     TEXT NOT NULL,
+    created_at         INTEGER NOT NULL,
+    UNIQUE(conv_id, sender_pubkey, recipient_pubkey, sender_key_version)
+)
+```
+
+`ciphertext_json` on `dm_messages` is reused: when `is_encrypted=1` it
+holds `EncryptedDmEnvelope`; when `is_group_encrypted=1` it holds
+`GroupEncryptedEnvelope`. Both flags are never 1 simultaneously.
+
+---
+
+### Client-side changes
+
+| Change | Where |
+|---|---|
+| `push_group_sender_key(conv_id)` Tauri command | `desktop/src-tauri/src/lib.rs` |
+| `fetch_group_sender_keys(conv_id)` Tauri command | same |
+| `encrypt_group_dm(conv_id, content)` Tauri command | same |
+| `decrypt_group_dm(conv_id, envelope)` Tauri command | same |
+| Local chain-key state file `~/.voxply/group_sender_keys.json` | managed by Tauri commands |
+| Group DM send path uses `encrypt_group_dm` | `desktop/src/App.tsx` |
+| `get_dm_messages` decrypts group envelopes inline | `desktop/src-tauri/src/lib.rs` |
+| Group DM banner replaced by lock icon once all keys are available | `desktop/src/components/ContentArea.tsx` |
+
+---
+
+### What's deferred
+
+- Key rotation on membership change (needs member add/remove routes first)
+- Federation of key distributions to remote recipient hubs
+  (v2 delivers to members on the same hub; cross-hub distribution is handled
+  by the same outbox/retry path as DM messages once that is extended)
+- Double Ratchet (v3) — adds per-message ephemeral keys for post-compromise security
+- Encrypted search (client-side post-decrypt, same constraint as 1:1)
+
+---
 
 ---
 
