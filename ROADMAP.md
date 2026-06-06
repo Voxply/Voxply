@@ -79,10 +79,13 @@ items live in the wiki — see
 
 ### Carry-over
 
-- **Custom user skins** — CSS token-based `.voxplyskin` files; fifth "Custom"
-  slot in the theme picker; export/import; persisted in `appearance.json`.
-  Personal-axis: follows the user, not the hub. Design in
-  [`custom-themes.md`](docs/custom-themes.md).
+- **Custom user skins + discovery gallery** — CSS token-based `.voxplyskin`
+  files; fifth "Custom" slot in the theme picker; export/import; persisted in
+  `appearance.json`. Browse and publish skins via a signed self-listing catalog
+  in Voxply-discovery (`POST /api/skins/register`, Browse tab in Appearance
+  settings). Personal-axis: follows the user, not the hub. Design in
+  [`custom-themes.md`](docs/custom-themes.md) and
+  [`discovery-v2.md`](docs/discovery-v2.md).
 
 - **Database abstraction layer** — trait-based `voxply-store` crate split so
   the hub is agnostic to its database backend. SQLite stays the default;
