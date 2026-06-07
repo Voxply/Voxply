@@ -8,6 +8,29 @@ canonical reference for ongoing implementation.
 > See also: [farm-model.md](farm-model.md) for the multi-hub server
 > layer, and [gaming.md](gaming.md) for the game distribution platform.
 
+## OAuth social verification badges
+
+**What**: a user can link a third-party account (GitHub, Steam, Twitter/X, etc.)
+to their Voxply identity and receive a verified badge visible on their profile.
+The badge proves "this Ed25519 key belongs to the person who controls that
+external account" — social proof, not auth.
+
+**Why not auth**: using OAuth for login or recovery would make the Voxply identity
+dependent on a centralized provider. Rejected as an auth path; see
+[`decisions.md`](decisions.md). Useful only as an opt-in metadata layer.
+
+**Implementation sketch**: user initiates an OAuth flow in the desktop client →
+receives a short-lived token from the provider → posts it to their hub (or a
+dedicated attestation microservice) → hub verifies the token server-side and
+stores a signed badge (issuer = hub pubkey, subject = user pubkey, claim =
+`{provider, provider_uid}`). Badge is visible on the user's profile card and
+exportable for other hubs to display. Provider account change / deauth revokes
+the badge.
+
+**Status**: undesigned. Not on the pre-launch list.
+
+---
+
 ## Anti-spam — proof-of-work + hub certifications
 
 **Problem**: decentralized identity means bots can generate keypairs

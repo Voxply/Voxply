@@ -4,6 +4,82 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## OAuth account linking — rejected as an auth mechanism; deferred as a social badge
+
+**Decision**: OAuth login (Google, Steam, GitHub, etc.) will not be used as an
+identity mechanism or recovery path in Voxply.
+
+**Why rejected for auth/recovery**: linking a Voxply identity to a centralized
+provider account means that if the provider bans the user, suspends the app, or
+changes its API, the user loses Voxply access too. This directly conflicts with
+the "your hub can't take your identity" sovereignty pillar that justifies the
+Ed25519 keypair model.
+
+**Better path for the same UX problem** (the "I forgot my 24-word phrase" case):
+encrypted-passphrase identity backup — the user picks a passphrase, the recovery
+phrase is encrypted with it, and the result is stored wherever the user chooses
+(their hub, a password manager, cloud storage). Gives the "login with passphrase"
+feel without any third-party dependency. Design in
+[`identity-recovery.md`](identity-recovery.md) — Part 1 (Backup / export).
+
+**OAuth may still ship as**: a "verified badge" feature — "this Voxply identity is
+linked to my GitHub / Steam profile". That is metadata for social proof, not auth.
+Tracked in [`future-features.md`](future-features.md).
+
+**Alternative considered**: use OAuth only for first-time onboarding to smooth
+key creation. Rejected: the keys the OAuth flow would create would still be tied
+to the provider — losing the provider account loses the key. The recovery phrase
+is a better first-time safety net and doesn't require any external account.
+
+---
+
+## Admin panel auth: desktop-app signing + TOTP, not a shared bearer token
+
+**Decision**: the web admin surfaces (hub web panel, farm console) drop the
+shared `web_admin_token` for a two-factor login tied to real identity. Factor
+one is an Ed25519 challenge signed by the user's **desktop app** — the browser
+shows a challenge, a `voxply://sign-admin` deep link hands it to the Tauri app,
+which confirms with a dialog and signs with the user's existing key
+(`auth_creds.rs`), then POSTs the signature to the server's own
+`/admin/auth/signed` endpoint (desktop→server, so no browser localhost listener
+and no CORS). Factor two is RFC 6238 TOTP, secret stored server-side keyed by
+canonical pubkey, with a QR enrollment on first login. A successful login mints
+a short-lived, server-side, opaque cookie session (12h, instantly revocable) —
+not a signed blob. The panel is **role-aware**: farm admin (`farms.admin_pubkey`)
+gets the farm console, a hub admin (role with `admin` on that hub) gets that
+hub's panel, multi-hub admins get a desktop-side picker. A signed, 8-hour
+`admin_panel: true` farm token is the remote/headless fallback (still requires
+TOTP). TOTP applies to the web panels only, never the desktop client. Full design
+in [`admin-panel-auth.md`](admin-panel-auth.md).
+
+**Alternatives considered**:
+
+- **Keep the shared bearer `web_admin_token`** ([`hub-admin-panel.md`](hub-admin-panel.md)
+  Feature 1). Rejected: a single secret with no identity behind it, no second
+  factor, and no link to the role system; a leak grants full admin with nothing
+  to revoke per-person. This entry supersedes that flow.
+- **Sign in the browser** (import the key into the page / WebCrypto). Rejected:
+  the private key must never enter the browser. Keeping the desktop app as the
+  signer matches the rest of Voxply's auth and behaves like a hardware key.
+- **A browser localhost callback server** for the signature. Rejected: it
+  reintroduces the CORS/preflight problem and an open local port. Routing the
+  signature desktop→server over HTTPS avoids both — the browser only ever talks
+  same-origin and polls for completion.
+- **A farm-level `hub_admin_grants` table** to centralize who admins which hub.
+  Rejected: hub-admin authority is community-axis and already lives in each hub's
+  `user_roles`. A farm-side grant store would put a community decision on the
+  hosting layer, violating the two-axis rule ([`home-hub.md`](home-hub.md)). Hub
+  admin is managed per-hub; the multi-hub picker is client-side convenience.
+
+**Tradeoff**: the flow needs the desktop app installed and adds a browser
+poll-for-callback round trip, which is more moving parts than pasting a token.
+We accept that because it buys real identity (the same key the user already
+holds), a true second factor, instant per-person revocation, and reuse of the
+existing role and `admin_pubkey` authorization — and the remote-token fallback
+covers the headless case for operators without the desktop app on the box.
+
+---
+
 ## Custom themes: CSS design tokens, not CSS injection; personal-axis, file-portable
 
 **Decision**: user-created skins expose a curated set of CSS custom properties
