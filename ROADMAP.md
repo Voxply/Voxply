@@ -7,10 +7,6 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Custom skins discovery gallery** — `skins` table + register/browse/delete endpoints in Voxply-discovery; Browse tab in Settings → Appearance on all 4 clients. Design in [`custom-themes.md`](docs/custom-themes.md) §11.
-- **Database abstraction layer** — `voxply-store` trait crate + `voxply-store-sqlite` impl; hub `AppState.db: SqlitePool` → `AppState.store: Arc<dyn HubStore>`; all route handlers rewritten to call store methods. Design in [`store-trait-design.md`](docs/store-trait-design.md).
-- **Forum per-post read cursors** — `post_reads` table, `POST /channels/:cid/posts/:id/read` endpoint, `unread_reply_count` on post list; client UI shows unread dot/count per thread in all 4 clients. Design in [`forum.md`](docs/forum.md).
-
 ## 🚢 Pre-launch checklist
 
 Work through these in order before shipping. Goal: reach a state where the
@@ -81,12 +77,8 @@ items live in the wiki — see
 
 ### Carry-over
 
-- **Custom skins discovery gallery** — Browse and publish skins via a signed self-listing catalog in Voxply-discovery (`POST /api/skins/register`, Browse tab in Appearance settings). Personal-axis: follows the user, not the hub. Design in [`custom-themes.md`](docs/custom-themes.md) and [`discovery-v2.md`](docs/discovery-v2.md).
 
-- **Database abstraction layer** — trait-based `voxply-store` crate split so
-  the hub is agnostic to its database backend. SQLite stays the default;
-  Postgres becomes a community-contribution drop-in. Four-step migration path
-  (no flag day). Design in [`store-trait-design.md`](docs/store-trait-design.md).
+- **Pre-push CI validation tooling** — a committed `scripts/check.sh` (or Makefile target) that mirrors what CI checks locally: `cargo metadata` workspace validation, Tauri npm/Rust minor-version parity check, `tsc --noEmit`. Wired to a `make install-hooks` pre-push hook so mismatches are caught before they break the remote build.
 
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal.
   Proximity voice is already a general platform primitive; only the
@@ -95,6 +87,12 @@ items live in the wiki — see
 - **E2E v2 — Double Ratchet** — forward secrecy / Signal-style ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Forum per-post read cursors (all 4 clients)** — `post_reads` table, `INSERT OR REPLACE` mark-read endpoint (`POST /channels/:cid/posts/:id/read`), `unread_reply_count` subquery on list/get; unread dot + count shown per thread row in all 4 clients. Design in [`forum.md`](docs/forum.md).
+
+- **Custom skins discovery gallery (all 4 clients)** — `skins` table in Voxply-discovery with Ed25519 signature verification and SHA-256 content-addressed IDs; `GET /api/skins` (search/paginate) + `POST` (publish) + `DELETE` (author-signed removal); `SkinsGallery` component with search, base filter, and "Load more" in the Appearance tab of all 4 clients. Design in [`custom-themes.md`](docs/custom-themes.md).
+
+- **Database abstraction layer** — `voxply-store` supertrait crate + `voxply-store-sqlite` impl; `StoreError` enum mapping to HTTP codes; `AppState` gains `store: Arc<dyn HubStore>` alongside existing `db: SqlitePool` for incremental migration. Design in [`store-trait-design.md`](docs/store-trait-design.md).
 
 - **Custom user skins (all 4 clients)** — Fifth "Custom" slot in the theme picker. `skinValidation.ts` (token allow-list, forbidden-substring guard, `validateSkin`, `applySkinTokens/clearSkinTokens`, export/import helpers) shared across all clients. `SkinEditor` component: name field, base-theme selector, token groups (Surfaces / Text / Accent / Status / Border & Effects / Shadows / Radius), live preview via `setProperty`, per-token reset, Reset all, Export `.voxplyskin`, Import with validation. Desktop and android/voxply-desktop persist via `load_appearance`/`save_appearance` Tauri commands (`~/.voxply/appearance.json`); web and android/voxply-web via `localStorage` key `voxply:appearance`. Design in [`custom-themes.md`](docs/custom-themes.md).
 
@@ -299,7 +297,6 @@ items live in the wiki — see
 - **Cross-farm cert relay** — hub certifications work per-hub; revocations don't propagate across farms. Design in [`hub-certifications.md`](docs/hub-certifications.md).
 - **Per-hub subkey revocation propagation** — revoking a multi-device subkey on one hub isn't automatically known to other hubs the user has joined. Design in [`multi-device.md`](docs/multi-device.md).
 - **Bot deferred scope** — voice/screen-share injection, bot DMs, outgoing webhooks, and bot-launched game modals have no implementation timeline. Design in [`future-features.md`](docs/future-features.md).
-- **Forum per-post read cursors** — forum channels use channel-level unread tracking only; per-post read cursors deferred. Design in [`forum.md`](docs/forum.md).
 - **Forum: reactions + attachments on posts** — not yet supported. Design in [`forum.md`](docs/forum.md).
 
 ## 💤 Won't do
