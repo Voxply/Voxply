@@ -69,6 +69,7 @@ only remaining work is polish and responding to user feedback.
 ## 🚧 Blocked
 
 - **Demo hub** — code is ready (`DEMO_HUB_URL` constant + conditional button). Blocked on ops: a Voxply-operated hub instance needs to be deployed and the constant flipped to its URL before the "Try a demo hub" button goes live.
+- **Android client icons** — placeholder solid-color PNGs in place. Waiting on the final logo asset. Run `cargo tauri icon <1024x1024.png>` once the brand logo is ready. See [`brand.md`](docs/brand.md).
 
 ## 📌 Wishlist (undesigned)
 
@@ -95,6 +96,8 @@ items live in the wiki — see
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal.
   Proximity voice is already a general platform primitive; only the
   persistent-world layer is undesigned.
+
+- **E2E v2 — Double Ratchet** — forward secrecy / Signal-style ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
 
@@ -292,3 +295,7 @@ items live in the wiki — see
 
 - **Load-aware DM routing across a user's hubs** — failover only; load-balancing needs gossip + cross-hub consistency. See [decisions.md](docs/decisions.md)
 - **Concurrent mic test while in voice** — two cpal input streams unreliable cross-platform; live meter covers it
+- **Central authority of any kind** — no global hub directory, global identity service, or DHT; federation is peer-to-peer
+- **Subscriptions, premium tiers, or in-chat advertising** — the missions/sparks system is cosmetics-only; no paywalled features
+- **Telemetry collection or data sales** — no opt-out telemetry; operators run their own hubs
+- **Global web-of-trust or negative reputation / shared ban lists** — federated ban lists are opt-in per hub, not a global negative registry
