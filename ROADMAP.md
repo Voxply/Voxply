@@ -7,8 +7,6 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-_(nothing queued — pick from wishlist or known issues)_
-
 ## 🚢 Pre-launch checklist
 
 Work through these in order before shipping. Goal: reach a state where the
@@ -79,13 +77,7 @@ items live in the wiki — see
 
 ### Carry-over
 
-- **Custom user skins + discovery gallery** — CSS token-based `.voxplyskin`
-  files; fifth "Custom" slot in the theme picker; export/import; persisted in
-  `appearance.json`. Browse and publish skins via a signed self-listing catalog
-  in Voxply-discovery (`POST /api/skins/register`, Browse tab in Appearance
-  settings). Personal-axis: follows the user, not the hub. Design in
-  [`custom-themes.md`](docs/custom-themes.md) and
-  [`discovery-v2.md`](docs/discovery-v2.md).
+- **Custom skins discovery gallery** — Browse and publish skins via a signed self-listing catalog in Voxply-discovery (`POST /api/skins/register`, Browse tab in Appearance settings). Personal-axis: follows the user, not the hub. Design in [`custom-themes.md`](docs/custom-themes.md) and [`discovery-v2.md`](docs/discovery-v2.md).
 
 - **Database abstraction layer** — trait-based `voxply-store` crate split so
   the hub is agnostic to its database backend. SQLite stays the default;
@@ -99,6 +91,8 @@ items live in the wiki — see
 - **E2E v2 — Double Ratchet** — forward secrecy / Signal-style ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Custom user skins (android/voxply-web)** — `skinValidation.ts` ported verbatim from the desktop client; `SkinEditor` component copied; `SettingsPage` gains a "Custom" slot that reveals the token editor; `App.tsx` persists/restores appearance via `localStorage` key `voxply:appearance` and applies CSS custom-property overrides via `applySkinTokens`/`clearSkinTokens`. Completes the custom-themes feature across all clients.
 
 - **Block/ignore settings panel + DM-block server sync** — `BlockIgnoreSection` wired into all 4 clients (desktop, web, android/voxply-web, android/voxply-desktop); `toggleBlockUser` calls `PUT /identity/dm-blocks` on the active hub in all 4 clients so the server enforces DM blocking. Design in [`block-mute-ignore.md`](docs/block-mute-ignore.md).
 
