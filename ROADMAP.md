@@ -87,7 +87,7 @@ items live in the wiki — see
 
 - [x] **Changelog pipeline** — `git-cliff` with `cliff.toml` in all five product repos. `scripts/release.sh` updates `CHANGELOG.md` and tags in one step. Desktop and hub `release.yml` auto-populate the GitHub Release body via `orhun/git-cliff-action`. Android, web, and discovery have `cliff.toml` ready; release CI wires in when those repos get release workflows.
 
-- **Desktop and server update mechanism** — hub operators currently update by pulling and restarting manually; desktop users re-download the installer. Design an operator-facing update path (e.g. `voxply-hub update` CLI command that fetches the latest binary from GitHub Releases and hot-swaps with graceful restart) and a desktop auto-updater (Tauri's built-in updater via `tauri-plugin-updater`, pointing at a JSON update manifest hosted on Voxply-discovery or a CDN). Android gets updates via the Play Store / sideload APK; that flow is already handled by CI.
+- [x] **Desktop and server update mechanism** — `voxply-hub update [--check]` fetches the latest binary from GitHub Releases and hot-swaps it in-place (Linux x86_64). Desktop auto-updater via `tauri-plugin-updater`: `check_for_updates` on startup emits `update-available`; user-visible `UpdateBanner` with [Update now] / [Later]; `install_pending_update` Tauri command does the download + install; release CI assembles `latest.json` from per-platform `.sig` files and uploads it as a release asset. Endpoint: `https://github.com/Voxply/Voxply-desktop/releases/latest/download/latest.json`.
 
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal.
   Proximity voice is already a general platform primitive; only the
