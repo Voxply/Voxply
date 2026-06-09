@@ -12,9 +12,14 @@ that is yours forever.
 The Voxply desktop app is available for Windows, macOS, and Linux from the
 [Voxply releases page](https://github.com/Voxply/Voxply-desktop/releases).
 
-Installers are signed where the platform supports it. Windows users may see a
-SmartScreen prompt on early builds while our EV certificate is being issued;
-click **More info → Run anyway** to proceed.
+**Windows**: installers are Authenticode-signed with an Extended Validation
+certificate provided free of charge by the
+[SignPath Foundation](https://signpath.org) for open-source projects. The
+private key is stored in SignPath's cloud HSM and never leaves it.
+New users should not see a SmartScreen warning on signed builds; if you
+downloaded an early unsigned build, click **More info → Run anyway**.
+
+**macOS / Linux**: notarization and GPG signing are planned for a future release.
 
 ---
 
