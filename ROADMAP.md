@@ -12,11 +12,6 @@ The full history of shipped work lives in
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
 
-- [ ] **DhKeyRecord + DM-envelope test vectors** — the wire-format spec
-  (`hub/docs/wire-format.md` in Voxply-server) documents these layouts but has
-  no hex vectors; the web client and both Rust clients implement them untested.
-  Add vectors to the spec and port the vector tests.
-
 ## 🚢 Pre-launch blockers
 
 - [ ] **Windows code-signing** — SignPath OSS application was refused
@@ -67,7 +62,10 @@ The full history of shipped work lives in
   repos, wiki synced with code reality. Follow-up: voice refresh is now
   event-driven (listeners pointed at the events each backend actually emits),
   and the vendored android i18n copy is re-synced with a CI drift check
-  (`scripts/check-vendored.sh`) covering both vendored packages.
+  (`scripts/check-vendored.sh`) covering both vendored packages. The vector
+  suite now also covers DhKeyRecord and all three DM envelopes (1:1, group,
+  sender-key distribution), pinned in the spec, both Rust clients, and the
+  web clients (no divergences found).
 
 Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
