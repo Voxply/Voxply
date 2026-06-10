@@ -12,20 +12,10 @@ The full history of shipped work lives in
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
 
-- [ ] **Re-sync the vendored android i18n copy** — `android/voxply-web/i18n`
-  has drifted from `web/i18n` (missing newer keys). Sync it, and decide on a
-  mechanism (script or CI check) so the vendored copies of `i18n` and `utils`
-  can't drift silently again.
-
 - [ ] **DhKeyRecord + DM-envelope test vectors** — the wire-format spec
   (`hub/docs/wire-format.md` in Voxply-server) documents these layouts but has
   no hex vectors; the web client and both Rust clients implement them untested.
   Add vectors to the spec and port the vector tests.
-
-- [ ] **Remove or implement the `voice-update` event** — all clients subscribe
-  to it but no Rust side emits it (they emit `voice-roster-update`, which
-  nothing consumes). Voice state currently relies on the 1.5 s poll plus
-  `voice-participant-speaking`.
 
 ## 🚢 Pre-launch blockers
 
@@ -67,7 +57,10 @@ The full history of shipped work lives in
   `@voxply/utils` package consumed by desktop/web/android, wire-format spec
   with cross-client byte-level vector tests (no divergences found), CI gains
   fmt/clippy gates and SHA-pinned actions, pre-commit secret guards in all
-  repos, wiki synced with code reality.
+  repos, wiki synced with code reality. Follow-up: voice refresh is now
+  event-driven (listeners pointed at the events each backend actually emits),
+  and the vendored android i18n copy is re-synced with a CI drift check
+  (`scripts/check-vendored.sh`) covering both vendored packages.
 
 Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
