@@ -12,14 +12,16 @@ that is yours forever.
 The Voxply desktop app is available for Windows, macOS, and Linux from the
 [Voxply releases page](https://github.com/Voxply/Voxply-desktop/releases).
 
-**Windows**: installers are Authenticode-signed with an Extended Validation
-certificate provided free of charge by the
-[SignPath Foundation](https://signpath.org) for open-source projects. The
-private key is stored in SignPath's cloud HSM and never leaves it.
-New users should not see a SmartScreen warning on signed builds; if you
-downloaded an early unsigned build, click **More info → Run anyway**.
+**Windows**: installers are currently **not code-signed** (signing for a
+young open-source project is in progress — the CI signing pipeline is
+already wired). SmartScreen will warn about an unrecognized app: click
+**More info → Run anyway**. Builds are reproducible from the public
+[Voxply-desktop](https://github.com/Voxply/Voxply-desktop) repository via
+GitHub Actions.
 
-**macOS / Linux**: notarization and GPG signing are planned for a future release.
+**macOS / Linux**: notarization and GPG signing are planned for a future
+release. On macOS, right-click the app and choose **Open** the first time;
+on Linux, `chmod +x` the AppImage.
 
 ---
 
@@ -62,18 +64,22 @@ workspace. To join one you need its URL from the hub admin (e.g.
 See [hosting.md](hosting.md) for the full guide. In brief:
 
 ```bash
-# Build
-cargo build --release -p hub
+# Docker (recommended)
+docker run -d -p 3000:3000 -p 3001:3001/udp \
+  -v voxply-hub-data:/data ghcr.io/voxply/hub:latest
 
-# Run
+# Or build from source
+cargo build --release -p voxply-hub
 VOXPLY_HTTP_PORT=3000 \
 VOXPLY_VOICE_UDP_PORT=3001 \
-./target/release/hub
+./target/release/voxply-hub
 ```
 
 The hub generates its own Ed25519 identity on first run and creates an SQLite
-database (`hub.db`) in the working directory. The first user to authenticate
-becomes the owner/admin.
+database (`hub.db`) in the working directory. A fresh hub has **no owner** —
+set yours via `owner_pubkey` in `hub.toml` / `VOXPLY_OWNER_PUBKEY`, or
+`voxply-hub admin users set-owner <pubkey>` after first boot (see the
+[hub operator guide](hub-operator-guide.md)).
 
 ---
 
