@@ -8,6 +8,24 @@ The full history of shipped work lives in
 
 ## 🔨 Next up
 
+- [ ] **Web client remediation (demo-blockers first)** — close the
+  highest-impact divergences from the [2026-06-11 audit](code-audit-2026-06-11.md)
+  so the browser client is credible for a public demo and the
+  [comparison](COMPARISON.md) "browser client" row can return to ✅.
+  Priority order: cross-channel/cross-hub message bleed (W1/W2), admin &
+  moderation panel hitting nonexistent routes (W13), screen-share viewing
+  (W8), in-channel search (W16), reconnect re-auth (W10). Reactions, typing,
+  and missing CSS (W12/W3/W4/W25) already done.
+- [ ] **Networked voice — Phase 1** — make voice work across a network
+  (today the relay only works when client and hub share a machine). Design
+  is ready: token-gated source-address learning, see
+  [voice-networking-design.md](docs/voice-networking-design.md). Removes the
+  "voice is LAN/local only" limitation from the comparison. Phase 2 (voice
+  encryption) is a separate later initiative.
+- [ ] **Hub security & correctness from the audit** — federated-DM sender
+  spoofing (H4), presence/bot single-session refcount (H2/H3), rate-limiter
+  keying behind a reverse proxy (H5/H6). See
+  [code-audit-2026-06-11.md](code-audit-2026-06-11.md).
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
