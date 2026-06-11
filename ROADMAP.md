@@ -24,8 +24,8 @@ The full history of shipped work lives in
   "voice is LAN/local only" limitation from the comparison. Phase 2 (voice
   encryption) is a separate later initiative.
 - [ ] **Hub security & correctness from the audit** — federated-DM sender
-  spoofing (H4), presence/bot single-session refcount (H2/H3), rate-limiter
-  keying behind a reverse proxy (H5/H6). See
+  spoofing (H4), rate-limiter keying behind a reverse proxy (H5/H6).
+  H2/H3 (presence refcount + bot_sessions per-session) done. See
   [code-audit-2026-06-11.md](code-audit-2026-06-11.md).
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
@@ -68,6 +68,18 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **H2/H3 presence refcount + bot_sessions per-session (2026-06-12)** —
+  `online_users` changed from `HashSet<String>` to `HashMap<String, usize>`;
+  connect increments, disconnect decrements and only removes the key at zero,
+  so multi-device / reconnect-overlap no longer falsely marks a user offline.
+  `bot_sessions` changed from `HashMap<pubkey, Sender>` to
+  `HashMap<pubkey, HashMap<session_id, Sender>>`; each WS session registers
+  under its own UUID and removes only its own entry on disconnect, so the
+  older session's sender survives. `ScreenStreamMeta` gained a `session_id`
+  field and disconnect cleanup now retains streams from other sessions.
+  4 new tests in `hub/tests/presence_multi_session_flow.rs`; all 44 test
+  suites green.
 
 - **Hub CORS layer + self-describing CLI (2026-06-11)** — `VOXPLY_CORS_ORIGINS`
   env-var (default `*`) wires a tower-http `CorsLayer` onto the main axum
@@ -250,7 +262,6 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   [`future-features.md`](docs/future-features.md).
 - **Forum: reactions + attachments on posts** — not yet supported. See
   [`forum.md`](docs/forum.md).
-- **Member presence tied to latest session only** — a user's older live WS session shows offline after a newer one disconnects.
 
 ## 💤 Won't do
 
