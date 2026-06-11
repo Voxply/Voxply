@@ -16,6 +16,10 @@ Looking for an open-source, self-hostable alternative to Discord or
 TeamSpeak? See the [feature comparison](COMPARISON.md) for how Voxply
 stacks up — including its honest limitations.
 
+![Joining a Voxply hub: create an identity, join, start chatting — in seconds, with no signup](assets/join-flow.gif)
+
+![A Voxply community: unified text + voice channels, voice participants in the sidebar, live member presence](assets/screenshot-channel.png)
+
 ## Get started
 
 - **Use Voxply** — download the
