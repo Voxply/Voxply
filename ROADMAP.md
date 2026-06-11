@@ -12,8 +12,8 @@ The full history of shipped work lives in
   highest-impact divergences from the [2026-06-11 audit](code-audit-2026-06-11.md)
   so the browser client is credible for a public demo and the
   [comparison](COMPARISON.md) "browser client" row can return to ✅.
-  Priority order: screen-share viewing (W8), in-channel search (W16),
-  reconnect re-auth (W10).
+  Priority order: screen-share viewing (W8).
+  In-channel search (W16) and reconnect re-auth (W10) done.
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
   (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
@@ -235,7 +235,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 ## ⚠️ Known issues
 
 - **demo-seed exports recovery phrases that don't recover the seeded identity (W27)** — credentials unusable for login; re-seed/screenshot logins blocked.
-- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). Remaining: dead screen-share (W8), in-channel search (W16), and 15 other items. Blocks a credible public web demo.
+- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). W16 fixed (in-channel search now hits `GET /channels/{id}/messages?q=` with 200ms debounce). W10 fixed (WS reconnect triggers full reauth after 3 consecutive failures instead of looping forever on a dead token). Remaining: dead screen-share (W8) and 13 other items. Blocks a credible public web demo.
 - **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
