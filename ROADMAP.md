@@ -36,11 +36,13 @@ The full history of shipped work lives in
 
 ## 📌 Wishlist (undesigned)
 
-- **Project visibility push** — remaining: real screenshots in the READMEs,
-  a hosted demo hub, directory listings, launch post.
+- **Project visibility push** — remaining: real screenshots in the READMEs
+  (demo-seed tool now exists to populate a hub for this), a hosted demo hub,
+  directory listings, launch post.
   Needed both for adoption and for the code-signing re-application.
   *(2026-06-10: all six READMEs rewritten as landing pages with badges,
-  cross-links, and a `docker compose` quick-start.)*
+  cross-links, and a `docker compose` quick-start.
+  2026-06-11: demo-seed tool added.)*
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity
   voice is already a platform primitive; only the persistent-world layer is
   undesigned.
@@ -49,6 +51,23 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Web onboarding styling + voice roster bootstrap (2026-06-11)** — web
+  client onboarding screens (identity create/recover, join-hub) now match
+  the app's visual style: added missing `button`, `input`/`textarea`/`select`
+  base CSS rules plus `btn-primary`, `btn-ghost`, `welcome-settings-link`
+  classes to `styles.css`. Voice roster is now populated on connect/hub-switch
+  via `GET /voice/participants`; `voice_roster_update`, `voice_participant_joined`,
+  and `voice_participant_left` WS events are handled individually so the sidebar
+  stays accurate during an active session. tsc clean.
+
+- **demo-seed tool (2026-06-11)** — new `tools/demo-seed` binary in the hub
+  workspace; populates a fresh running hub with 8 identities (Nova as owner +
+  7 members), 5 channels under 4 categories, ~30 realistic messages, a poll,
+  a pinned welcome message, and emoji reactions. Reads `HUB_URL` (default
+  `localhost:3000`); writes credentials (tokens + recovery phrases) to
+  `demo-credentials.json` (gitignored). `cargo check` and `cargo build --release`
+  warning-clean.
 
 - **ContentArea.tsx ports to all forks (2026-06-11)** — web (1,157 → ~320-line
   composition root), android/voxply-desktop (979 → ~290), android/voxply-web
@@ -197,6 +216,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   [`future-features.md`](docs/future-features.md).
 - **Forum: reactions + attachments on posts** — not yet supported. See
   [`forum.md`](docs/forum.md).
+- **Poll announcement sender bug** — all-zeros key materializes phantom hub member (no name/roles). Sender should be poll creator.
 
 ## 💤 Won't do
 
