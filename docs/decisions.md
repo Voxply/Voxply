@@ -6,6 +6,45 @@ the top. This file holds the most recent entries; older ones are
 relocated verbatim to [decisions-archive.md](decisions-archive.md)
 so this file stays small enough to read whole.
 
+## Hubs may optionally self-serve the web client (operator sovereignty, not central hosting)
+
+**Decision**: a hub can serve the browser client from its own origin. Setting
+`VOXPLY_WEB_CLIENT_DIR` makes the hub serve a directory of built web-client
+assets at `/` with SPA fallback; unset, the hub is API-only exactly as before.
+The official Docker image bakes a version-matched web-client build in and sets
+the var by default, so `docker compose up` yields a working client at the hub's
+own URL. The served client defaults its first hub connection to its serving
+origin (via an injected `window.__VOXPLY_HOME_HUB__`) while keeping the
+type-a-URL flow for adding other hubs.
+
+**Why**: the highest-value growth lever for a small operator is "send a link, a
+friend is in" — no app install, no typing a hub URL into a separate hosted page.
+Serving the client from the hub's own origin delivers that and is also the most
+federation-honest shape: each operator serves their own client from their own
+domain. This is not a Voxply-operated service — it reinforces operator
+sovereignty rather than centralizing anything, and it does not phone home.
+Requested by the first external hub operator (videogamezone pilot, 2026-06-12).
+
+**Alternatives considered**:
+
+- **Compile-time embed (rust-embed) behind a toggle** — rejected: freezes a
+  web-client build into every hub binary, bloats the binary for the
+  proxy/hosted-client majority, and forces a hub recompile to ship a web-client
+  fix.
+- **Hosted client only (status quo) + documented nginx/Caddy sidecar** — kept as
+  a documented option for advanced operators, but doesn't meet the zero-config
+  bar the pilot operator asked for.
+- **Runtime-dir only, no Docker baking** — leaves the dominant Docker path
+  needing a manual mount; baking into the image is what makes it frictionless.
+
+**Tradeoff**: the Docker image grows by the web-client bundle and the hub
+release pipeline gains a cross-repo Voxply-web checkout (same pattern the
+desktop release uses for i18n). The served client is pinned to the web-client
+release current at the hub release cut; the floor is that the served client
+never requires API surface newer than the hub shipping it. API 404 semantics
+are preserved by serving the SPA fallback only to `Accept: text/html`
+navigations.
+
 ## Demo Hub removed — discovery is the entry point for new users
 
 **Decision**: the "Try a demo hub" button and `DEMO_HUB_URL` constant are

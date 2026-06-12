@@ -21,6 +21,12 @@ The full history of shipped work lives in
   2026-06-12 (see Recently shipped). Desktop/web/android clients still need to
   send the VXRG register packet after `voice_joined` and retry until they
   receive VXRA. Phase 2 (voice encryption) is separate.
+- [ ] **Hub optionally self-serves the web client** *(IN PROGRESS 2026-06-13)* —
+  `VOXPLY_WEB_CLIENT_DIR` serves built web-client assets at `/` (SPA fallback
+  gated on `Accept: text/html`); Docker image bakes a version-matched build;
+  served client auto-targets its origin via `window.__VOXPLY_HOME_HUB__`.
+  Decision + rationale in [decisions.md](docs/decisions.md). Requested by the
+  pilot operator.
 - [ ] **Desktop voice/composer UI cleanup pass** — after voice Phase 1:
   composer actions inside the textbox Discord-style with a "+" menu (D5a/b),
   consolidated call-control bar (D9), leave-voice affordance (D3), implicit
