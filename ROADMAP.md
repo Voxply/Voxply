@@ -17,12 +17,11 @@ The full history of shipped work lives in
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
   (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
-- [ ] **Networked voice — Phase 1, remaining clients** — server + desktop
-  client shipped 2026-06-12/13 (hub v0.2.2+, desktop v0.2.3+); first
-  cross-internet voice test pending on the pilot hub. Android needs the
-  VXRG/VXRA port (TS/types mechanical; the voice engine differs). Web
-  hard-blocks voice entirely (separate, larger question). Phase 2
-  (voice encryption) is separate.
+- [ ] **Networked voice — Phase 1, cross-internet test** — server + desktop
+  shipped 2026-06-12/13; Android Tauri shell ported 2026-06-13 (voice crate
+  added, 8 Tauri commands wired, TypeScript join/leave/mute/deafen wired).
+  First cross-internet voice test pending (pilot hub). Web voice blocked on
+  raw-UDP (see Design questions). Phase 2 (voice encryption) is separate.
 - [ ] **Desktop voice/composer UI cleanup pass** — composer D5b SHIPPED on
   web 2026-06-13 (reference implementation, Playwright-verified; port to
   desktop next). Remaining: consolidated call-control bar (D9), leave-voice
@@ -65,6 +64,13 @@ The full history of shipped work lives in
 
 ## 🤔 Design questions
 
+- **Web voice — WebSocket audio relay or WebRTC** — browsers have no raw UDP
+  API, so VXRG cannot be sent from the web client. Two paths: (a) a
+  WebSocket-based audio relay added to the hub (hub buffers/fans-out Opus
+  frames over WS instead of UDP); (b) WebRTC, which requires a TURN/STUN
+  infrastructure. Either requires a hub protocol change and a new client
+  codec path. Android and desktop continue to use the UDP pipeline; this is a
+  web-only question.
 - **Farm agent WS token in URL query string** — registration tokens appear in
   `/ws/agent?token=…` and therefore in access logs. Moving to a header or a
   first-message auth frame requires a coordinated server/agent protocol change.
@@ -355,10 +361,11 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   pilot hub (2026-06-12). Decide the intended behavior, align code + docs.
 - **demo-seed exports recovery phrases that don't recover the seeded identity (W27)** — credentials unusable for login; re-seed/screenshot logins blocked.
 - **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). W16 fixed (in-channel search now hits `GET /channels/{id}/messages?q=` with 200ms debounce). W10 fixed (WS reconnect triggers full reauth after 3 consecutive failures instead of looping forever on a dead token). Remaining: dead screen-share (W8) and 13 other items. Blocks a credible public web demo.
-- **2026-06-11 audit: networked voice broken (H7 — server side fixed)** — hub
-  relay now learns real source addresses via VXRG token-gated UDP registration
-  (shipped 2026-06-12). Voice still silent until desktop/web/android clients
-  send the VXRG register packet after `voice_joined`.
+- **2026-06-11 audit: networked voice (H7 — server + desktop + android fixed)** —
+  hub relay learns real source addresses via VXRG (shipped 2026-06-12); desktop
+  client ported same day; android Tauri shell ported 2026-06-13. Web voice
+  remains architecturally blocked on raw UDP (see Design questions). First
+  cross-internet voice test still pending.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
 - **Windows installer unsigned** — SmartScreen warning; workaround "More info →
