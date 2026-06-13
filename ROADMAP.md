@@ -30,10 +30,6 @@ The full history of shipped work lives in
   screen-share list fixes (D4). See
   [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md) and
   [design-review-2026-06-13.md](design-review-2026-06-13.md).
-- [ ] **Hub security & correctness from the audit** — federated-DM sender
-  spoofing (H4). H2/H3 (presence refcount + bot_sessions per-session) and
-  H5/H6 (rate-limiter trusted-proxy + IPv6 canonicalization) done. See
-  [code-audit-2026-06-11.md](code-audit-2026-06-11.md).
 - [ ] **First external operator pilot (videogamezone.eu)** — hub v0.2.3 LIVE
   at `https://voxply.videogamezone.eu` (runbook: `pilot-videogamezone/`),
   now also serving the web client at its own URL with same-origin
@@ -90,6 +86,14 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **H4 federated-DM sender spoofing fixed (2026-06-13)** — Ed25519
+  signature verification is enforced on all three receive-federated-DM
+  paths (encrypted, group-encrypted, plaintext) in
+  `hub/src/routes/dms/messages.rs`. All hub audit findings from the
+  [2026-06-11 audit](code-audit-2026-06-11.md) are now resolved: H2/H3
+  (presence refcount + bot_sessions per-session), H4 (federated-DM
+  spoofing), H5/H6 (rate-limiter trusted-proxy + IPv6 canonicalization).
 
 - **Web voice via WebSocket audio relay (2026-06-13)** — browsers cannot send
   raw UDP, so a second voice path was added: hub gains a `/voice/ws` WebSocket
@@ -373,7 +377,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   client ported same day; android Tauri shell ported 2026-06-13; web voice
   shipped 2026-06-13 via WebSocket audio relay. First cross-internet voice
   test still pending.
-- **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
+- **2026-06-11 audit: federated-DM security (H4) — FIXED 2026-06-13** — Ed25519 signature verification added to all three receive-federated-DM paths in `hub/src/routes/dms/messages.rs`. All hub audit items resolved.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
 - **Windows installer unsigned** — SmartScreen warning; workaround "More info →
   Run anyway". See the code-signing blocker above.
