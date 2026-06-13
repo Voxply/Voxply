@@ -6,6 +6,59 @@ the top. This file holds the most recent entries; older ones are
 relocated verbatim to [decisions-archive.md](decisions-archive.md)
 so this file stays small enough to read whole.
 
+## Client apps consolidate into one monorepo; hub server stays separate
+
+**Decision**: the three client repos — Voxply-desktop, Voxply-web,
+Voxply-android — merge into a single client monorepo (`voxply`) with
+internal pnpm workspace packages (`packages/core`, `packages/ui`,
+`packages/platform`, `packages/i18n`) for shared code and per-app
+projects under `apps/*`. The Rust hub server (Voxply-server) stays its
+own repo. Full plan, staged migration, and CI/release/updater details in
+[client-monorepo.md](client-monorepo.md).
+
+**Why**: the clients already share code, but through three fragile edges.
+A `file:` dep from desktop into Voxply-web (`@voxply/utils`,
+`@voxply/i18n`) pulled a **second copy of React** into the packaged
+desktop build and crashed it, forcing a `dedupe` band-aid in the desktop
+Vite config (desktop `7844c31`). The desktop release workflow checks out
+**two repos** just to resolve i18n. The Android web fork reaches across
+repos via a Vite alias (`@components` → `../voxply-desktop/src/...`) that
+only works with both repos checked out side by side. And the trigger:
+invite-link parsing (`#invite=` / `?invite=`) would otherwise be written
+2–3 times — the desktop has `parseHubInput()`, the web client has no URL
+invite parser at all. A workspace makes the double-React class
+structurally impossible (single hoisted React), collapses the dual
+checkout to one, and lets a shared-code change plus all consuming clients
+land in one commit. [browser-client.md](browser-client.md) already
+flagged this refactor as deferred; this is it.
+
+**Alternatives considered**:
+
+- **Keep multi-repo + the cross-repo Vite alias / `file:` deps (status
+  quo)** — rejected: it is the source of the double-React crash, the
+  dual-checkout release, and the side-by-side-checkout requirement; every
+  shared-code change is a multi-repo dance.
+- **Standalone published `@voxply/core` npm package (separate repo)** —
+  rejected: the publish / version-bump / update-consumers cycle adds
+  *more* friction than today, not less. An internal workspace package
+  shares code with zero release machinery and lets a shared-code change
+  and all its consumers ship in one commit.
+- **Full monorepo including the Rust hub server** — rejected: the hub is
+  a different deploy unit (server binary / Docker image with its own
+  release cadence and its own CI), not an installed app. Co-locating it
+  buys nothing and couples unrelated release pipelines.
+
+**Tradeoff**: consolidating three public repos into one drops the org's
+public repo count six → four, a minor negative against the stated
+stars/visibility goal (mitigated by keeping the old repos archived but
+visible, and by one well-documented clients repo being a stronger
+newcomer entry point). The Voxply-server Docker web-builder stage must
+re-point its Voxply-web checkout to the monorepo's `apps/web` — a
+cross-repo coordination point called out in the migration. The TS
+identity crypto stays byte-pinned to the hub's wire-format vectors; that
+contract was already cross-repo and is unchanged (now one TS
+implementation instead of three).
+
 ## Hubs may optionally self-serve the web client (operator sovereignty, not central hosting)
 
 **Decision**: a hub can serve the browser client from its own origin. Setting

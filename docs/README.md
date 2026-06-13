@@ -50,6 +50,7 @@ These shipped — the doc is the design rationale behind the code (see
 16. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity
 17. [android-client.md](android-client.md) — Tauri 2 Android wrapper around the browser platform layer, side-loaded APK
     - [install-android.md](install-android.md) — end-user guide: enable unknown sources, download APK, Play Protect warning
+    - [client-monorepo.md](client-monorepo.md) — **designed, not built**: consolidating the three client repos into one pnpm-workspace monorepo (`packages/core|ui|platform|i18n` + `apps/*`); staged migration, git-subtree history preservation, CI/release/updater cutover. Hub server stays separate. See [decisions.md](decisions.md).
 18. [bots.md](bots.md) — external bot ecosystem: invite-by-pubkey, slash commands, webhook dispatch, per-hub directory
 19. [accessibility.md](accessibility.md) — keyboard navigation, ARIA / screen-reader support, i18n strategy across desktop / web / Android
 20. [forum.md](forum.md) — forum channel type: post-list variant, posts + reply threads, `create_posts`/`manage_posts` permissions, FTS search

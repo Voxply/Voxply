@@ -8,6 +8,13 @@ The full history of shipped work lives in
 
 ## 🔨 Next up
 
+- [ ] **Client monorepo consolidation** — merge Voxply-desktop / -web /
+  -android into one pnpm-workspace repo (`packages/core|ui|platform|i18n`
+  + `apps/*`); hub server stays separate. Kills the double-React `file:`
+  hazard, the dual-checkout release, and the cross-repo Vite alias.
+  Stage 1 canary = invite-link parser (`#invite=`) extracted to
+  `packages/core`, shipping the feature once for all clients (web is NOT
+  hotfixed separately). Plan: [client-monorepo.md](docs/client-monorepo.md).
 - [ ] **Web client remediation (demo-blockers first)** — close the
   highest-impact divergences from the [2026-06-11 audit](code-audit-2026-06-11.md)
   so the browser client is credible for a public demo and the
