@@ -1,0 +1,38 @@
+# Voxply hub — pilot deployment on web.videogamezone.eu
+# Lives in ~/voxply on the server; managed entirely by the anachim user
+# (docker group), no root needed for day-to-day operation.
+#
+# GATE: ghcr.io/voxply/hub:latest is usable only after the v0.2.1 release
+# (needs the CORS layer + --doctor from develop). Until then, build the
+# image from the develop branch locally and `docker save`/`load` it here
+# as voxply-hub:develop, then switch the image line below.
+
+services:
+  hub:
+    image: ghcr.io/voxply/hub:0.2.4
+    container_name: voxply-hub
+    restart: unless-stopped
+    environment:
+      # Hub owner = the operator (the friend's Ed25519 pubkey, 64 hex chars,
+      # from desktop client Settings -> Identity). Booting ownerless for the
+      # smoke test; assign later WITHOUT a restart via:
+      #   docker compose exec hub /voxply-hub admin users set-owner <pubkey>
+      # VOXPLY_OWNER_PUBKEY: "<OWNER_PUBKEY_HEX>"
+      # CORS defaults to * — required for browser clients, safe (bearer-token auth)
+      VOXPLY_LOG_FORMAT: "text"
+      # nginx terminates TLS in front; without this every request counts
+      # against one shared rate-limit bucket (the proxy's IP) and a few bad
+      # logins would lock out the whole hub. Requires the proxy to send
+      # X-Forwarded-For (our vhost does).
+      VOXPLY_TRUSTED_PROXY: "true"
+    volumes:
+      - hub-data:/data
+    ports:
+      # HTTP/WS only on loopback — nginx terminates TLS and proxies here.
+      # Never expose 3000 publicly: plain HTTP, and HSTS is on for the domain.
+      - "127.0.0.1:3000:3000"
+      # Voice relay — must be publicly reachable
+      - "3001:3001/udp"
+
+volumes:
+  hub-data:
